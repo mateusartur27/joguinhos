@@ -1,0 +1,503 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../layouts/Base.astro';
+import { sortearDilemas } from '../../lib/db/dilemas';
+
+// Renderizado no servidor com o primeiro dilema ja no HTML. Quem chega de um
+// link do TikTok nao pode ver tela vazia esperando `fetch`: o primeiro toque
+// tem que estar disponivel no primeiro quadro pintado.
+const fila = await sortearDilemas(env.DB, { limite: 3 });
+const primeiro = fila[0];
+
+// `<` vira escape unicode para que nenhum texto de dilema consiga fechar a tag
+// do script embutido. Vale menos pelo acervo escrito a mao e mais pelo que o
+// Gemini vai gerar depois.
+const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
+---
+
+<Base
+  title="Escolhas Impossíveis — joguinhos"
+  description="Decida o indecidível e descubra na hora o que a maioria escolheu. Sem cadastro."
+  bare
+>
+  {
+    !primeiro ? (
+      <p class="vazio">Sem dilemas publicados ainda. Volte em instantes.</p>
+    ) : (
+      <main class="jogo">
+        <header class="cabecalho">
+          <a class="voltar" href="/">← joguinhos</a>
+          <span class="placar" data-placar>0 escolhas</span>
+        </header>
+
+        <p class="categoria" data-categoria>
+          {primeiro.categoria}
+        </p>
+        <h1 class="pergunta">O que você escolheria?</h1>
+
+        <div class="opcoes">
+          <button class="op" data-op="a" type="button">
+            <span class="barra" data-barra="a" />
+            <span class="rotulo" data-texto="a">
+              {primeiro.opcaoA}
+            </span>
+            <span class="pct" data-pct="a" />
+          </button>
+
+          <div class="ou">OU</div>
+
+          <button class="op" data-op="b" type="button">
+            <span class="barra" data-barra="b" />
+            <span class="rotulo" data-texto="b">
+              {primeiro.opcaoB}
+            </span>
+            <span class="pct" data-pct="b" />
+          </button>
+        </div>
+
+        <div class="depois" data-depois hidden>
+          <p class="veredito" data-veredito aria-live="polite" />
+          <p class="votos" data-votos />
+          <button class="proxima" data-proxima type="button">
+            Próxima →
+          </button>
+        </div>
+
+        <a class="mais" href="/">🎮 Ver mais jogos</a>
+
+        <script
+          type="application/json"
+          data-fila-inicial
+          set:html={filaJson}
+        />
+      </main>
+    )
+  }
+</Base>
+
+<script>
+  interface Dilema {
+    id: number;
+    categoria: string;
+    opcaoA: string;
+    opcaoB: string;
+  }
+
+  interface Resultado {
+    id: number;
+    votosA: number;
+    votosB: number;
+    total: number;
+  }
+
+  const CHAVE_VISTOS = 'joguinhos:escolhas:vistos';
+  const CHAVE_PLACAR = 'joguinhos:escolhas:placar';
+
+  /**
+   * Abaixo disso a porcentagem mente mais do que informa: com 3 votos, "67%"
+   * soa como dado coletivo e nao e. Enquanto o acervo nao tem massa, a
+   * recompensa e outra — a pessoa chegou antes de todo mundo.
+   */
+  const VOTOS_MINIMOS_PARA_PORCENTAGEM = 20;
+
+  const jogo = document.querySelector<HTMLElement>('.jogo');
+  if (jogo) iniciar(jogo);
+
+  function iniciar(jogo: HTMLElement) {
+    const el = {
+      categoria: jogo.querySelector<HTMLElement>('[data-categoria]')!,
+      placar: jogo.querySelector<HTMLElement>('[data-placar]')!,
+      depois: jogo.querySelector<HTMLElement>('[data-depois]')!,
+      veredito: jogo.querySelector<HTMLElement>('[data-veredito]')!,
+      votos: jogo.querySelector<HTMLElement>('[data-votos]')!,
+      proxima: jogo.querySelector<HTMLButtonElement>('[data-proxima]')!,
+      opcoes: {
+        a: jogo.querySelector<HTMLButtonElement>('[data-op="a"]')!,
+        b: jogo.querySelector<HTMLButtonElement>('[data-op="b"]')!,
+      },
+      texto: {
+        a: jogo.querySelector<HTMLElement>('[data-texto="a"]')!,
+        b: jogo.querySelector<HTMLElement>('[data-texto="b"]')!,
+      },
+      barra: {
+        a: jogo.querySelector<HTMLElement>('[data-barra="a"]')!,
+        b: jogo.querySelector<HTMLElement>('[data-barra="b"]')!,
+      },
+      pct: {
+        a: jogo.querySelector<HTMLElement>('[data-pct="a"]')!,
+        b: jogo.querySelector<HTMLElement>('[data-pct="b"]')!,
+      },
+    };
+
+    const numero = new Intl.NumberFormat('pt-BR');
+
+    // O `localStorage` falha em aba anonima e com cookies bloqueados. Nada
+    // aqui e essencial ao jogo, entao toda leitura e escrita degrada em
+    // silencio em vez de derrubar o loop.
+    function lerLista(chave: string): number[] {
+      try {
+        const bruto = localStorage.getItem(chave);
+        const valor: unknown = bruto ? JSON.parse(bruto) : [];
+        return Array.isArray(valor) ? valor.filter((v) => Number.isInteger(v)) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function guardar(chave: string, valor: unknown) {
+      try {
+        localStorage.setItem(chave, JSON.stringify(valor));
+      } catch {
+        /* sessao sem armazenamento: o jogo continua, so nao lembra */
+      }
+    }
+
+    function lerPlacar(): number {
+      try {
+        return Number.parseInt(localStorage.getItem(CHAVE_PLACAR) ?? '0', 10) || 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    const inicial: Dilema[] = JSON.parse(
+      jogo.querySelector<HTMLElement>('[data-fila-inicial]')?.textContent ?? '[]',
+    );
+
+    let vistos = lerLista(CHAVE_VISTOS);
+    let placar = lerPlacar();
+    let fila = inicial.filter((d) => !vistos.includes(d.id));
+    let atual: Dilema | null = null;
+    let votando = false;
+
+    atualizarPlacar();
+
+    // O servidor nao conhece o historico local, entao o dilema que veio no HTML
+    // pode ser um que a pessoa ja respondeu. Nesse caso trocamos por um novo.
+    if (fila.length > 0 && fila[0]!.id === inicial[0]?.id) {
+      atual = fila.shift()!;
+      abastecer();
+    } else {
+      avancar();
+    }
+
+    el.opcoes.a.addEventListener('click', () => votar('a'));
+    el.opcoes.b.addEventListener('click', () => votar('b'));
+    el.proxima.addEventListener('click', avancar);
+
+    async function abastecer() {
+      if (fila.length >= 2) return;
+      try {
+        const resposta = await fetch(
+          `/api/escolhas/proximo?n=3&vistos=${vistos.slice(-150).join(',')}`,
+        );
+        if (!resposta.ok) return;
+        const dados = (await resposta.json()) as { dilemas: Dilema[] };
+        fila.push(...dados.dilemas.filter((d) => d.id !== atual?.id));
+      } catch {
+        /* sem rede: o botao "Próxima" tenta de novo no proximo toque */
+      }
+    }
+
+    async function avancar() {
+      if (fila.length === 0) await abastecer();
+      const proximo = fila.shift();
+      if (!proximo) return;
+      mostrar(proximo);
+      abastecer();
+    }
+
+    function mostrar(dilema: Dilema) {
+      atual = dilema;
+      votando = false;
+
+      el.categoria.textContent = dilema.categoria;
+      el.texto.a.textContent = dilema.opcaoA;
+      el.texto.b.textContent = dilema.opcaoB;
+
+      for (const lado of ['a', 'b'] as const) {
+        el.opcoes[lado].disabled = false;
+        el.opcoes[lado].classList.remove('escolhida', 'revelada');
+        el.barra[lado].style.width = '0%';
+        el.pct[lado].textContent = '';
+      }
+
+      el.depois.hidden = true;
+      jogo.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
+    async function votar(escolha: 'a' | 'b') {
+      if (!atual || votando) return;
+      votando = true;
+
+      const dilema = atual;
+      el.opcoes.a.disabled = true;
+      el.opcoes.b.disabled = true;
+      el.opcoes[escolha].classList.add('escolhida');
+
+      vistos = [...vistos, dilema.id].slice(-300);
+      guardar(CHAVE_VISTOS, vistos);
+      placar += 1;
+      guardar(CHAVE_PLACAR, placar);
+      atualizarPlacar();
+
+      try {
+        const resposta = await fetch('/api/escolhas/voto', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: dilema.id, escolha }),
+        });
+        if (!resposta.ok) throw new Error(String(resposta.status));
+        revelar((await resposta.json()) as Resultado, escolha);
+      } catch {
+        // O voto pode ter se perdido, mas travar a pessoa numa tela de erro
+        // custa mais que perder um voto. Segue o jogo, sem inventar numero.
+        el.veredito.textContent = 'Não deu para contar seu voto agora.';
+        el.votos.textContent = '';
+        el.depois.hidden = false;
+      }
+
+      abastecer();
+    }
+
+    function revelar(resultado: Resultado, escolha: 'a' | 'b') {
+      const pctA =
+        resultado.total === 0 ? 50 : Math.round((resultado.votosA / resultado.total) * 100);
+      const pctB = 100 - pctA;
+      const meu = escolha === 'a' ? pctA : pctB;
+
+      el.barra.a.style.width = `${pctA}%`;
+      el.barra.b.style.width = `${pctB}%`;
+      el.opcoes.a.classList.add('revelada');
+      el.opcoes.b.classList.add('revelada');
+
+      if (resultado.total < VOTOS_MINIMOS_PARA_PORCENTAGEM) {
+        el.pct.a.textContent = '';
+        el.pct.b.textContent = '';
+        el.barra.a.style.width = '0%';
+        el.barra.b.style.width = '0%';
+        el.veredito.textContent = 'Você é um dos primeiros a responder isso. 🌱';
+        el.votos.textContent =
+          resultado.total === 1
+            ? 'Seu voto foi o primeiro.'
+            : `${numero.format(resultado.total)} pessoas responderam até agora.`;
+      } else {
+        el.pct.a.textContent = `${pctA}%`;
+        el.pct.b.textContent = `${pctB}%`;
+        el.veredito.textContent = vereditoDe(meu);
+        el.votos.textContent = `${numero.format(resultado.total)} votos`;
+      }
+
+      el.depois.hidden = false;
+    }
+
+    function vereditoDe(meu: number): string {
+      if (meu <= 15) return `Só ${meu}% pensam como você. 🔥`;
+      if (meu < 45) return `Você está na minoria: ${meu}%.`;
+      if (meu <= 55) return 'Isso divide o país no meio.';
+      if (meu < 80) return `${meu}% concordam com você.`;
+      return `Você e mais ${meu}% do Brasil. Escolha óbvia.`;
+    }
+
+    function atualizarPlacar() {
+      el.placar.textContent = placar === 1 ? '1 escolha' : `${placar} escolhas`;
+    }
+  }
+</script>
+
+<style>
+  .vazio {
+    padding: 4rem 0;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .voltar {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .placar {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .categoria {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .pergunta {
+    margin: 0.4rem 0 1.5rem;
+    font-size: clamp(1.6rem, 7vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .opcoes {
+    position: relative;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .op {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 7.5rem;
+    padding: 1.25rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      border-color 0.2s ease;
+  }
+
+  .op:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .op[data-op='a'] {
+    --cor: var(--b);
+  }
+
+  .op[data-op='b'] {
+    --cor: var(--a);
+  }
+
+  .op:disabled {
+    cursor: default;
+  }
+
+  .op.escolhida {
+    border-color: var(--cor);
+  }
+
+  /* Preenchimento proporcional ao resultado. Cresce por tras do texto, entao a
+     leitura nao depende da animacao terminar. */
+  .barra {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background: color-mix(in srgb, var(--cor) 30%, transparent);
+    transition: width 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .rotulo {
+    position: relative;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .pct {
+    position: relative;
+    flex: none;
+    color: var(--cor);
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.25s;
+  }
+
+  .op.revelada .pct {
+    opacity: 1;
+  }
+
+  .ou {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    transform: translate(-50%, -50%);
+  }
+
+  .depois {
+    padding-top: 1.5rem;
+    text-align: center;
+    animation: subir 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .veredito {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .votos {
+    padding-top: 0.3rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .proxima {
+    width: 100%;
+    min-height: var(--tap);
+    margin-top: 1.25rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(100deg, var(--a), var(--b));
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+  }
+
+  .proxima:active {
+    transform: scale(0.98);
+  }
+
+  .mais {
+    display: block;
+    padding-top: 2.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+  }
+</style>

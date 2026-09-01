@@ -8,7 +8,9 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
-  site: 'https://joguinhos.workers.dev',
+  // Trocar por dominio proprio quando comprado — AdSense nao aprova
+  // site hospedado em subdominio de plataforma.
+  site: 'https://joguinhos.mateus2002ns.workers.dev',
   build: {
     inlineStylesheets: 'always',
   },

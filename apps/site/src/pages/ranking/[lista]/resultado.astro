@@ -1,0 +1,172 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../../layouts/Base.astro';
+import { buscarLista, buscarRanking, DUELOS_MINIMOS_PARA_TAXA } from '../../../lib/db/ranking';
+
+const slug = Astro.params.lista!;
+const lista = await buscarLista(env.DB, slug);
+if (!lista) return new Response('Lista não encontrada', { status: 404 });
+
+const ranking = await buscarRanking(env.DB, slug);
+
+// Cada duelo soma em dois competidores; a metade e o numero de disputas.
+const totalDuelos = Math.floor(
+  ranking.reduce((soma, item) => soma + item.duelos, 0) / 2,
+);
+
+const numero = new Intl.NumberFormat('pt-BR');
+const medalhas = ['🥇', '🥈', '🥉'];
+---
+
+<Base
+  title={`${lista.titulo}: o ranking do público — joguinhos`}
+  description={`${lista.pergunta} Veja o ranking montado por ${numero.format(totalDuelos)} duelos do público.`}
+>
+  <main>
+    <p class="categoria">{lista.emoji} ranking coletivo</p>
+    <h1>{lista.pergunta}</h1>
+    <p class="sub">
+      {
+        totalDuelos === 0
+          ? 'Ninguém votou ainda. Seja o primeiro a montar este ranking.'
+          : `Montado por ${numero.format(totalDuelos)} ${totalDuelos === 1 ? 'duelo' : 'duelos'} do público.`
+      }
+    </p>
+
+    <ol class="tabela">
+      {
+        ranking.map((item, indice) => (
+          <li class:list={['linha', { podio: indice < 3 }]}>
+            <span class="pos">{medalhas[indice] ?? `${indice + 1}º`}</span>
+            <span class="nome">{item.rotulo}</span>
+            <span class="numeros">
+              <b>{Math.round(item.rating)}</b>
+              <small>
+                {item.duelos < DUELOS_MINIMOS_PARA_TAXA
+                  ? `${item.duelos} ${item.duelos === 1 ? 'duelo' : 'duelos'}`
+                  : `${Math.round((item.vitorias / item.duelos) * 100)}% em ${item.duelos} duelos`}
+              </small>
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+
+    <p class="nota">
+      Os pontos começam iguais para todos e mudam a cada duelo: vencer quem está
+      em alta vale mais do que vencer quem está em baixa.
+    </p>
+
+    <a class="cta" href={`/ranking/${slug}`}>⚔️ Votar nos duelos</a>
+    <a class="mais" href="/">🎮 Ver mais jogos</a>
+  </main>
+</Base>
+
+<style>
+  .categoria {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 0.4rem 0 0.5rem;
+    font-size: clamp(1.5rem, 6.5vw, 2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .sub {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .tabela {
+    display: grid;
+    gap: 0.4rem;
+    margin: 1.5rem 0 1.25rem;
+    padding: 0;
+    list-style: none;
+    counter-reset: pos;
+  }
+
+  .linha {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+  }
+
+  .linha.podio {
+    border-color: color-mix(in srgb, var(--b) 45%, var(--border));
+    background: color-mix(in srgb, var(--b) 10%, var(--surface));
+  }
+
+  .pos {
+    font-size: 1.15rem;
+    font-weight: 800;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nome {
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .numeros {
+    display: grid;
+    justify-items: end;
+    gap: 0.1rem;
+    text-align: right;
+  }
+
+  .numeros b {
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .numeros small {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nota {
+    padding-bottom: 1.5rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
+  .cta {
+    display: block;
+    min-height: var(--tap);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(100deg, var(--a), var(--b));
+    font-size: 1.02rem;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .mais {
+    display: block;
+    padding-top: 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+</style>

@@ -1,0 +1,367 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../../layouts/Base.astro';
+import { buscarLista, sortearDuelo } from '../../../lib/db/ranking';
+
+const slug = Astro.params.lista!;
+const lista = await buscarLista(env.DB, slug);
+if (!lista) return new Response('Lista não encontrada', { status: 404 });
+
+// Primeiro duelo no HTML, mesma razao da pagina de Escolhas: entrada por link
+// direto nao pode custar uma ida de rede antes do primeiro toque.
+const duelo = await sortearDuelo(env.DB, slug);
+---
+
+<Base
+  title={`${lista.titulo} — joguinhos`}
+  description={`${lista.pergunta} Escolha entre dois e ajude a montar o ranking do público.`}
+  bare
+>
+  {
+    !duelo ? (
+      <p class="vazio">Esta lista ainda não tem competidores suficientes.</p>
+    ) : (
+      <main class="jogo" data-lista={slug}>
+        <header class="cabecalho">
+          <a class="voltar" href="/">← joguinhos</a>
+          <span class="placar" data-placar>
+            0 duelos
+          </span>
+        </header>
+
+        <p class="categoria">{lista.emoji} ranking coletivo</p>
+        <h1 class="pergunta">{lista.pergunta}</h1>
+
+        <div class="opcoes">
+          <button class="op" data-op="a" data-id={duelo.a.id} type="button">
+            <span class="rotulo" data-texto="a">
+              {duelo.a.rotulo}
+            </span>
+          </button>
+
+          <div class="vs">VS</div>
+
+          <button class="op" data-op="b" data-id={duelo.b.id} type="button">
+            <span class="rotulo" data-texto="b">
+              {duelo.b.rotulo}
+            </span>
+          </button>
+        </div>
+
+        <p class="reveal" data-reveal aria-live="polite">&nbsp;</p>
+
+        <a class="ver-ranking" href={`/ranking/${slug}/resultado`}>
+          🏆 Ver o ranking completo
+        </a>
+        <a class="mais" href="/">🎮 Ver mais jogos</a>
+      </main>
+    )
+  }
+</Base>
+
+<script>
+  interface Competidor {
+    id: number;
+    rotulo: string;
+  }
+
+  interface Duelo {
+    a: Competidor;
+    b: Competidor;
+  }
+
+  interface Resultado {
+    vencedor: {
+      rotulo: string;
+      posicao: number;
+      duelos: number;
+      vitorias: number;
+    };
+    totalDuelos: number;
+  }
+
+  /** Abaixo disso a taxa de vitoria ainda e ruido. Espelha o valor do servidor. */
+  const DUELOS_MINIMOS_PARA_TAXA = 10;
+
+  /** Quanto o resultado fica na tela antes do proximo duelo entrar. */
+  const PAUSA_DO_REVEAL = 1100;
+
+  const jogo = document.querySelector<HTMLElement>('.jogo');
+  if (jogo) iniciar(jogo);
+
+  function iniciar(jogo: HTMLElement) {
+    const lista = jogo.dataset.lista!;
+    const chavePlacar = `joguinhos:ranking:${lista}:placar`;
+
+    const el = {
+      placar: jogo.querySelector<HTMLElement>('[data-placar]')!,
+      reveal: jogo.querySelector<HTMLElement>('[data-reveal]')!,
+      opcoes: {
+        a: jogo.querySelector<HTMLButtonElement>('[data-op="a"]')!,
+        b: jogo.querySelector<HTMLButtonElement>('[data-op="b"]')!,
+      },
+      texto: {
+        a: jogo.querySelector<HTMLElement>('[data-texto="a"]')!,
+        b: jogo.querySelector<HTMLElement>('[data-texto="b"]')!,
+      },
+    };
+
+    const numero = new Intl.NumberFormat('pt-BR');
+
+    let placar = ler();
+    let proximo: Duelo | null = null;
+    let julgando = false;
+
+    atualizarPlacar();
+    prefetch();
+
+    el.opcoes.a.addEventListener('click', () => julgar('a'));
+    el.opcoes.b.addEventListener('click', () => julgar('b'));
+
+    function ler(): number {
+      try {
+        return Number.parseInt(localStorage.getItem(chavePlacar) ?? '0', 10) || 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    function guardar() {
+      try {
+        localStorage.setItem(chavePlacar, String(placar));
+      } catch {
+        /* sessao sem armazenamento */
+      }
+    }
+
+    async function prefetch() {
+      if (proximo) return;
+      try {
+        const resposta = await fetch(`/api/ranking/${lista}/duelo`);
+        if (!resposta.ok) return;
+        proximo = ((await resposta.json()) as { duelo: Duelo }).duelo;
+      } catch {
+        /* sem rede: tenta de novo no proximo julgamento */
+      }
+    }
+
+    async function julgar(lado: 'a' | 'b') {
+      if (julgando) return;
+      julgando = true;
+
+      const vencedorId = Number(el.opcoes[lado].dataset.id);
+      const perdedorId = Number(el.opcoes[lado === 'a' ? 'b' : 'a'].dataset.id);
+
+      el.opcoes[lado].classList.add('escolhida');
+      el.opcoes.a.disabled = true;
+      el.opcoes.b.disabled = true;
+
+      placar += 1;
+      guardar();
+      atualizarPlacar();
+
+      try {
+        const resposta = await fetch(`/api/ranking/${lista}/voto`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ vencedorId, perdedorId }),
+        });
+        if (!resposta.ok) throw new Error(String(resposta.status));
+        mostrarReveal((await resposta.json()) as Resultado);
+      } catch {
+        el.reveal.textContent = 'Não deu para contar esse duelo agora.';
+      }
+
+      await prefetch();
+      setTimeout(avancar, PAUSA_DO_REVEAL);
+    }
+
+    function mostrarReveal(resultado: Resultado) {
+      const { rotulo, posicao, duelos, vitorias } = resultado.vencedor;
+
+      if (duelos < DUELOS_MINIMOS_PARA_TAXA) {
+        el.reveal.textContent = `Você ajudou a colocar ${rotulo} no ranking.`;
+        return;
+      }
+
+      const taxa = Math.round((vitorias / duelos) * 100);
+      el.reveal.textContent =
+        `${rotulo} está em #${posicao} · vence ${taxa}% dos duelos ` +
+        `· ${numero.format(resultado.totalDuelos)} duelos na lista`;
+    }
+
+    function avancar() {
+      if (!proximo) {
+        julgando = false;
+        el.opcoes.a.disabled = false;
+        el.opcoes.b.disabled = false;
+        return;
+      }
+
+      const duelo = proximo;
+      proximo = null;
+
+      el.opcoes.a.dataset.id = String(duelo.a.id);
+      el.opcoes.b.dataset.id = String(duelo.b.id);
+      el.texto.a.textContent = duelo.a.rotulo;
+      el.texto.b.textContent = duelo.b.rotulo;
+
+      for (const lado of ['a', 'b'] as const) {
+        el.opcoes[lado].classList.remove('escolhida');
+        el.opcoes[lado].disabled = false;
+      }
+
+      julgando = false;
+      prefetch();
+    }
+
+    function atualizarPlacar() {
+      el.placar.textContent = placar === 1 ? '1 duelo' : `${placar} duelos`;
+    }
+  }
+</script>
+
+<style>
+  .vazio {
+    padding: 4rem 0;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .voltar {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .placar {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .categoria {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .pergunta {
+    margin: 0.4rem 0 1.5rem;
+    font-size: clamp(1.6rem, 7vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .opcoes {
+    position: relative;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .op {
+    display: grid;
+    place-items: center;
+    min-height: 8rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      border-color 0.2s ease,
+      background 0.2s ease;
+  }
+
+  .op[data-op='a'] {
+    --cor: var(--b);
+  }
+
+  .op[data-op='b'] {
+    --cor: var(--a);
+  }
+
+  .op:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .op.escolhida {
+    border-color: var(--cor);
+    background: color-mix(in srgb, var(--cor) 22%, var(--surface));
+  }
+
+  .rotulo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+
+  .vs {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    transform: translate(-50%, -50%);
+  }
+
+  .reveal {
+    min-height: 2.75rem;
+    padding-top: 1rem;
+    color: var(--c);
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  .ver-ranking {
+    display: block;
+    min-height: var(--tap);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .mais {
+    display: block;
+    padding-top: 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+</style>

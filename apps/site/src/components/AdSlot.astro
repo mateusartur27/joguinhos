@@ -1,0 +1,46 @@
+---
+/**
+ * Espaco de anuncio.
+ *
+ * Enquanto `PUBLIC_ADSENSE_CLIENT` estiver vazio o componente nao renderiza
+ * nada — nem um espaco reservado. Isso mantem o site limpo antes da aprovacao
+ * do AdSense, que exige dominio proprio.
+ *
+ * Onde colocar importa mais que o formato: anuncio encostado em botao de jogo
+ * gera clique acidental, e clique acidental e o caminho mais curto para
+ * suspensao da conta. Por isso este componente so deve ser usado **depois** do
+ * resultado ou no fim da pagina, nunca entre as opcoes de um jogo.
+ */
+interface Props {
+  slot: string;
+}
+
+const { slot } = Astro.props;
+const cliente = import.meta.env.PUBLIC_ADSENSE_CLIENT;
+---
+
+{
+  cliente && (
+    <aside class="anuncio" aria-label="Publicidade">
+      <ins
+        class="adsbygoogle"
+        style="display:block"
+        data-ad-client={cliente}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+      <script is:inline>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </aside>
+  )
+}
+
+<style>
+  .anuncio {
+    display: block;
+    margin: 2.5rem 0 0;
+    min-height: 100px;
+  }
+</style>

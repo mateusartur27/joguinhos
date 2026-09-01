@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# As rotas de API nao tem conteudo para indexar.
+Disallow: /api/

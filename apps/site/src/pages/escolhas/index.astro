@@ -66,6 +66,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
         <a class="mais" href="/">🎮 Ver mais jogos</a>
 
         <script
+          is:inline
           type="application/json"
           data-fila-inicial
           set:html={filaJson}

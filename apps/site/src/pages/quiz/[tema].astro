@@ -1,5 +1,6 @@
 ---
 import { env } from 'cloudflare:workers';
+import AdSlot from '../../components/AdSlot.astro';
 import Base from '../../layouts/Base.astro';
 import { buscarTema, sortearRodada } from '../../lib/db/quiz';
 
@@ -66,11 +67,12 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
             🔁 Jogar de novo
           </button>
           <a class="mais" href="/">🎮 Ver mais jogos</a>
+          <AdSlot slot="quiz-final" />
         </section>
 
         <a class="mais" data-rodape href="/">🎮 Ver mais jogos</a>
 
-        <script type="application/json" data-rodada set:html={rodadaJson} />
+        <script is:inline type="application/json" data-rodada set:html={rodadaJson} />
       </main>
     )
   }

@@ -10,6 +10,10 @@ interface Props {
 
 const { title, description, bare = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
+
+// Vazio ate a aprovacao do AdSense (que exige dominio proprio). Sem isso
+// nenhum `<AdSlot />` renderiza e a biblioteca nem e carregada.
+const adsense = import.meta.env.PUBLIC_ADSENSE_CLIENT;
 ---
 
 <!doctype html>
@@ -28,6 +32,16 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
+
+    {
+      adsense && (
+        <script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsense}`}
+          crossorigin="anonymous"
+        />
+      )
+    }
   </head>
   <body>
     <div class="wrap">

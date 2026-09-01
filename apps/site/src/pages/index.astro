@@ -1,28 +1,61 @@
 ---
+import { env } from 'cloudflare:workers';
+import AdSlot from '../components/AdSlot.astro';
 import Base from '../layouts/Base.astro';
+import { buscarJogos } from '../lib/db/jogos';
 
-// Placeholder da Fase 0: existe para validar build, bindings e deploy.
-// A home de verdade (catalogo lido da tabela `games`) entra na Fase 4.
-export const prerender = true;
+const jogos = await buscarJogos(env.DB);
 ---
 
 <Base
-  title="joguinhos — microjogos rápidos"
-  description="Escolhas impossíveis, rankings coletivos e quizzes rápidos. Sem cadastro, comece a jogar em um toque."
+  title="joguinhos — microjogos rápidos, sem cadastro"
+  description="Escolhas impossíveis, rankings montados pelo público e quizzes rápidos. Um toque e você já está jogando."
 >
   <main>
-    <p class="eyebrow">em construção</p>
     <h1>Um parque de <b>microjogos</b>.</h1>
     <p class="lead">
-      Escolhas impossíveis, rankings feitos pelo público e quizzes rápidos.
-      Sem cadastro: você toca e já está jogando.
+      Um toque e você já está jogando. Sem cadastro, sem download.
+    </p>
+
+    {
+      jogos.length === 0 ? (
+        <p class="vazio">Nenhum jogo publicado ainda.</p>
+      ) : (
+        <ul class="catalogo">
+          {jogos.map((jogo, indice) => (
+            <li>
+              <a class="cartao" href={jogo.href} style={`--tom: var(--tom-${indice % 3});`}>
+                <span class="emoji">{jogo.emoji}</span>
+                <span class="conteudo">
+                  <span class="titulo">{jogo.titulo}</span>
+                  <span class="chamada">{jogo.chamada}</span>
+                </span>
+                <span class="seta">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <AdSlot slot="home-rodape" />
+
+    <p class="rodape">
+      Feito no Brasil. Os números que aparecem nos jogos vêm de quem jogou antes
+      de você.
     </p>
   </main>
 </Base>
 
 <style>
+  main {
+    --tom-0: var(--b);
+    --tom-1: var(--a);
+    --tom-2: var(--c);
+  }
+
   h1 {
-    margin: 0.6rem 0 0.9rem;
+    margin: 0.5rem 0 0.75rem;
     font-size: clamp(2rem, 9vw, 2.75rem);
     font-weight: 800;
     line-height: 1.05;
@@ -41,5 +74,82 @@ export const prerender = true;
     color: var(--muted);
     font-size: 1.05rem;
     line-height: 1.5;
+  }
+
+  .vazio {
+    padding: 3rem 0;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .catalogo {
+    display: grid;
+    gap: 0.7rem;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cartao {
+    display: grid;
+    grid-template-columns: 3rem 1fr 1.25rem;
+    align-items: center;
+    gap: 0.9rem;
+    min-height: var(--tap);
+    padding: 1.05rem 1.1rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--tom);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-decoration: none;
+    transition:
+      transform 0.12s ease,
+      background 0.2s ease;
+  }
+
+  .cartao:active {
+    transform: scale(0.99);
+    background: var(--surface-2);
+  }
+
+  .emoji {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--tom) 16%, transparent);
+    font-size: 1.5rem;
+  }
+
+  .conteudo {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .titulo {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .chamada {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  .seta {
+    color: var(--muted);
+    font-size: 1.1rem;
+    text-align: right;
+  }
+
+  .rodape {
+    padding-top: 2.5rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-align: center;
   }
 </style>

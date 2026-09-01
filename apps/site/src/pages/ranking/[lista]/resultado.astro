@@ -1,5 +1,6 @@
 ---
 import { env } from 'cloudflare:workers';
+import AdSlot from '../../../components/AdSlot.astro';
 import Base from '../../../layouts/Base.astro';
 import { buscarLista, buscarRanking, DUELOS_MINIMOS_PARA_TAXA } from '../../../lib/db/ranking';
 
@@ -59,6 +60,8 @@ const medalhas = ['🥇', '🥈', '🥉'];
 
     <a class="cta" href={`/ranking/${slug}`}>⚔️ Votar nos duelos</a>
     <a class="mais" href="/">🎮 Ver mais jogos</a>
+
+    <AdSlot slot="ranking-resultado" />
   </main>
 </Base>
 

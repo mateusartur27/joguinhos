@@ -1,0 +1,38 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "joguinhos-content",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Worker separado do site por dois motivos: o adapter do Astro e dono do
+  // entry point e nao expoe handler `scheduled`, e a chave do Gemini nao
+  // precisa existir no Worker que atende trafego publico.
+  "triggers": {
+    "crons": ["0 9 * * *"]
+  },
+
+  // A URL workers.dev existe so para o disparo manual protegido por token.
+  // URLs de preview nao servem a nada aqui e so aumentam a superficie.
+  "preview_urls": false,
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "joguinhos",
+      "database_id": "e4881e81-d8bc-483c-ae6b-d9800de85d60",
+      "migrations_dir": "../../db/migrations"
+    }
+  ],
+
+  "vars": {
+    "GEMINI_MODEL": "gemini-3.5-flash-lite",
+    // Teto conservador: a cota real depende do plano da conta, e estourar
+    // custa 429 no meio da geracao.
+    "GEMINI_CALLS_PER_MINUTE": "10"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -15,6 +15,10 @@
     "deploy": "npm run deploy --workspace apps/site",
     "check": "npm run check --workspaces --if-present",
     "test": "vitest run",
+    "content:deploy": "npm run deploy --workspace apps/content-engine",
+    "content:rascunhos": "node scripts/conteudo.mjs rascunhos",
+    "content:publicar": "node scripts/conteudo.mjs publicar",
+    "content:descartar": "node scripts/conteudo.mjs descartar",
     "db:migrate:local": "wrangler d1 migrations apply joguinhos --local --config apps/site/wrangler.jsonc",
     "db:migrate:remote": "wrangler d1 migrations apply joguinhos --remote --config apps/site/wrangler.jsonc"
   },

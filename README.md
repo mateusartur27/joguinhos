@@ -41,12 +41,49 @@ Bindings vêm de `import { env } from 'cloudflare:workers'`.
 ## Estrutura
 
 ```
-apps/site/          Worker público: páginas + API dos jogos
-  src/lib/db/       Acesso ao D1, um módulo por jogo
-  src/lib/ranking/  Elo (lógica pura, com testes)
-  src/pages/        Rotas; cada jogo é uma rota própria
-db/migrations/      SQL versionado, incluindo o acervo inicial
+apps/site/            Worker público: páginas + API dos jogos
+  src/lib/db/         Acesso ao D1, um módulo por jogo
+  src/lib/ranking/    Elo (lógica pura, com testes)
+  src/pages/          Rotas; cada jogo é uma rota própria
+apps/content-engine/  Worker de cron: gera conteúdo novo via Gemini
+db/migrations/        SQL versionado, incluindo o acervo inicial
+scripts/conteudo.mjs  Revisão do que o Gemini gerou
 ```
+
+São dois Workers porque o adapter do Astro é dono do entry point e não expõe
+handler `scheduled`, e porque a chave do Gemini não precisa existir no Worker
+que atende tráfego público.
+
+## Motor de conteúdo
+
+Roda todo dia às 9h UTC e grava **tudo como rascunho**. Publicar texto de LLM
+automaticamente num site com AdSense assume dois riscos de uma vez: erro
+factual no quiz e violação de política no dilema.
+
+Isso não é precaução teórica — no primeiro lote real, 2 de 8 dilemas não
+prestavam e 1 de 5 perguntas trazia uma alternativa em espanhol
+("Jogo peligroso"). Os outros 10 foram publicados.
+
+Toda chamada ao Gemini passa pelo `createRateLimitedFetch` com reserva em D1,
+portado do `gerador-de-video`: o escopo da proteção precisa ser a conta
+inteira, e o D1 é o único estado que as execuções já compartilham.
+
+```bash
+npm run content:rascunhos               # lista o que está esperando revisão
+npm run content:publicar dilema 61 62   # aprova
+npm run content:descartar quiz 40       # rejeita
+npm run content:deploy                  # publica o worker de cron
+```
+
+Disparo manual, sem esperar o cron:
+
+```bash
+curl -X POST https://joguinhos-content.mateus2002ns.workers.dev/gerar -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Os segredos (`GEMINI_API_KEY`, `ADMIN_TOKEN`) vivem em
+`apps/content-engine/.dev.vars` no local — arquivo fora do git — e como
+secrets do Worker em produção.
 
 O acervo inicial (dilemas, listas, perguntas) vai como migração, e não como
 script de seed: um banco novo precisa nascer jogável.

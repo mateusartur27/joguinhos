@@ -1,0 +1,26 @@
+{
+  "name": "joguinhos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/site",
+    "build": "npm run build --workspace apps/site",
+    "deploy": "npm run deploy --workspace apps/site",
+    "check": "npm run check --workspaces --if-present",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply joguinhos --local --config apps/site/wrangler.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply joguinhos --remote --config apps/site/wrangler.jsonc"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
+    "wrangler": "^4.128.0"
+  }
+}

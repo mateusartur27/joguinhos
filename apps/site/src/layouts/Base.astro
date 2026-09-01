@@ -1,0 +1,55 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Some o cabecalho nas paginas de jogo: quem chega do TikTok entra jogando. */
+  bare?: boolean;
+}
+
+const { title, description, bare = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#08080f" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="joguinhos" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div class="wrap">
+      {
+        !bare && (
+          <header class="top">
+            <a class="logo" href="/">
+              jogui<b>nhos</b>
+            </a>
+          </header>
+        )
+      }
+      <slot />
+    </div>
+  </body>
+</html>
+
+<style>
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 1.5rem;
+  }
+</style>

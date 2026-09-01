@@ -1,0 +1,21 @@
+{
+  "name": "@joguinhos/site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler dev",
+    "deploy": "astro build && wrangler deploy",
+    "check": "astro check",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.2.6",
+    "astro": "^7.2.10"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1"
+  }
+}

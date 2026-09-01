@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "joguinhos",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // `main` e `assets` são preenchidos pelo adapter do Astro — não declarar aqui.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "joguinhos",
+      "database_id": "e4881e81-d8bc-483c-ae6b-d9800de85d60",
+      "migrations_dir": "../../db/migrations"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

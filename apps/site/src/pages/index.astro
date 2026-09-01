@@ -1,0 +1,45 @@
+---
+import Base from '../layouts/Base.astro';
+
+// Placeholder da Fase 0: existe para validar build, bindings e deploy.
+// A home de verdade (catalogo lido da tabela `games`) entra na Fase 4.
+export const prerender = true;
+---
+
+<Base
+  title="joguinhos — microjogos rápidos"
+  description="Escolhas impossíveis, rankings coletivos e quizzes rápidos. Sem cadastro, comece a jogar em um toque."
+>
+  <main>
+    <p class="eyebrow">em construção</p>
+    <h1>Um parque de <b>microjogos</b>.</h1>
+    <p class="lead">
+      Escolhas impossíveis, rankings feitos pelo público e quizzes rápidos.
+      Sem cadastro: você toca e já está jogando.
+    </p>
+  </main>
+</Base>
+
+<style>
+  h1 {
+    margin: 0.6rem 0 0.9rem;
+    font-size: clamp(2rem, 9vw, 2.75rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  h1 b {
+    background: linear-gradient(100deg, var(--a), var(--b) 60%, var(--c));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .lead {
+    max-width: 30ch;
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+</style>

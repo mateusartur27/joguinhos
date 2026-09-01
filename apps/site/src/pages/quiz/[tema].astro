@@ -1,0 +1,416 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../layouts/Base.astro';
+import { buscarTema, sortearRodada } from '../../lib/db/quiz';
+
+const slug = Astro.params.tema!;
+const tema = await buscarTema(env.DB, slug);
+if (!tema) return new Response('Tema não encontrado', { status: 404 });
+
+const rodada = await sortearRodada(env.DB, slug);
+const primeira = rodada[0];
+
+// A rodada inteira vai no HTML: uma leitura no banco, nenhuma ida de rede no
+// meio do jogo. `<` escapado para nenhum enunciado conseguir fechar a tag.
+const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
+---
+
+<Base
+  title={`${tema.titulo} — joguinhos`}
+  description={`Quiz rápido de 8 perguntas. Responda e veja como você se sai contra a média.`}
+  bare
+>
+  {
+    !primeira ? (
+      <p class="vazio">Este tema ainda não tem perguntas publicadas.</p>
+    ) : (
+      <main class="jogo">
+        <header class="cabecalho">
+          <a class="voltar" href="/">← joguinhos</a>
+          <span class="sequencia" data-sequencia />
+        </header>
+
+        <div class="progresso">
+          <span class="passo" data-passo>1 de {rodada.length}</span>
+          <div class="trilho">
+            <div class="preenchido" data-preenchido />
+          </div>
+        </div>
+
+        <section data-tela="pergunta">
+          <h1 class="enunciado" data-enunciado>
+            {primeira.enunciado}
+          </h1>
+
+          <div class="alternativas" data-alternativas>
+            {primeira.alternativas.map((texto) => (
+              <button class="alt" type="button">
+                {texto}
+              </button>
+            ))}
+          </div>
+
+          <div class="depois" data-depois hidden>
+            <p class="veredito" data-veredito aria-live="polite" />
+            <p class="explicacao" data-explicacao />
+            <button class="proxima" data-proxima type="button">
+              Próxima →
+            </button>
+          </div>
+        </section>
+
+        <section class="final" data-tela="final" hidden>
+          <p class="placar-final" data-placar-final />
+          <p class="comparacao" data-comparacao />
+          <button class="proxima" data-de-novo type="button">
+            🔁 Jogar de novo
+          </button>
+          <a class="mais" href="/">🎮 Ver mais jogos</a>
+        </section>
+
+        <a class="mais" data-rodape href="/">🎮 Ver mais jogos</a>
+
+        <script type="application/json" data-rodada set:html={rodadaJson} />
+      </main>
+    )
+  }
+</Base>
+
+<script>
+  interface Pergunta {
+    id: number;
+    enunciado: string;
+    alternativas: string[];
+    correta: number;
+    explicacao: string | null;
+    taxaAcerto: number | null;
+  }
+
+  /**
+   * Minimo de perguntas com estatistica para a tela final comparar com a media.
+   * Com menos que isso a "media" seria chute, e inventar numero aqui e pior do
+   * que nao mostrar nada — esses numeros viram conteudo depois.
+   */
+  const COBERTURA_MINIMA = 0.5;
+
+  const jogo = document.querySelector<HTMLElement>('.jogo');
+  if (jogo) iniciar(jogo);
+
+  function iniciar(jogo: HTMLElement) {
+    const el = {
+      sequencia: jogo.querySelector<HTMLElement>('[data-sequencia]')!,
+      passo: jogo.querySelector<HTMLElement>('[data-passo]')!,
+      preenchido: jogo.querySelector<HTMLElement>('[data-preenchido]')!,
+      enunciado: jogo.querySelector<HTMLElement>('[data-enunciado]')!,
+      alternativas: jogo.querySelector<HTMLElement>('[data-alternativas]')!,
+      depois: jogo.querySelector<HTMLElement>('[data-depois]')!,
+      veredito: jogo.querySelector<HTMLElement>('[data-veredito]')!,
+      explicacao: jogo.querySelector<HTMLElement>('[data-explicacao]')!,
+      proxima: jogo.querySelector<HTMLButtonElement>('[data-proxima]')!,
+      telaPergunta: jogo.querySelector<HTMLElement>('[data-tela="pergunta"]')!,
+      telaFinal: jogo.querySelector<HTMLElement>('[data-tela="final"]')!,
+      placarFinal: jogo.querySelector<HTMLElement>('[data-placar-final]')!,
+      comparacao: jogo.querySelector<HTMLElement>('[data-comparacao]')!,
+      deNovo: jogo.querySelector<HTMLButtonElement>('[data-de-novo]')!,
+      rodape: jogo.querySelector<HTMLElement>('[data-rodape]')!,
+    };
+
+    const rodada: Pergunta[] = JSON.parse(
+      jogo.querySelector<HTMLElement>('[data-rodada]')?.textContent ?? '[]',
+    );
+
+    let indice = 0;
+    let acertos = 0;
+    let sequencia = 0;
+    let respondida = false;
+
+    mostrar();
+
+    el.proxima.addEventListener('click', () => {
+      indice += 1;
+      if (indice >= rodada.length) encerrar();
+      else mostrar();
+    });
+
+    el.deNovo.addEventListener('click', () => location.reload());
+
+    function atual(): Pergunta {
+      return rodada[indice]!;
+    }
+
+    function mostrar() {
+      const pergunta = atual();
+      respondida = false;
+
+      el.passo.textContent = `${indice + 1} de ${rodada.length}`;
+      el.preenchido.style.width = `${(indice / rodada.length) * 100}%`;
+      el.enunciado.textContent = pergunta.enunciado;
+      el.depois.hidden = true;
+
+      el.alternativas.replaceChildren(
+        ...pergunta.alternativas.map((texto, posicao) => {
+          const botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'alt';
+          botao.textContent = texto;
+          botao.addEventListener('click', () => responder(posicao));
+          return botao;
+        }),
+      );
+    }
+
+    function responder(posicao: number) {
+      if (respondida) return;
+      respondida = true;
+
+      const pergunta = atual();
+      const acertou = posicao === pergunta.correta;
+      const botoes = [...el.alternativas.querySelectorAll<HTMLButtonElement>('.alt')];
+
+      botoes.forEach((botao, i) => {
+        botao.disabled = true;
+        if (i === pergunta.correta) botao.classList.add('certa');
+        else if (i === posicao) botao.classList.add('errada');
+      });
+
+      if (acertou) {
+        acertos += 1;
+        sequencia += 1;
+      } else {
+        sequencia = 0;
+      }
+
+      el.sequencia.textContent = sequencia >= 2 ? `🔥 ${sequencia} seguidas` : '';
+      el.veredito.textContent = vereditoDe(acertou, pergunta.taxaAcerto);
+      el.explicacao.textContent = pergunta.explicacao ?? '';
+      el.preenchido.style.width = `${((indice + 1) / rodada.length) * 100}%`;
+      el.proxima.textContent = indice + 1 >= rodada.length ? 'Ver resultado →' : 'Próxima →';
+      el.depois.hidden = false;
+
+      // Contabiliza no banco sem travar a tela: o proximo toque nao espera isso.
+      void fetch('/api/quiz/resposta', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: pergunta.id, acertou }),
+        keepalive: true,
+      }).catch(() => {
+        /* resposta perdida vale menos que interromper a rodada */
+      });
+    }
+
+    function vereditoDe(acertou: boolean, taxa: number | null): string {
+      if (taxa === null) return acertou ? 'Acertou! ✅' : 'Errou. ❌';
+
+      const pct = Math.round(taxa * 100);
+      if (acertou) {
+        return pct <= 35 ? `Acertou — e só ${pct}% acertam essa. 🔥` : `Acertou! ${pct}% acertam essa.`;
+      }
+      return pct <= 35 ? `Errou — mas ${100 - pct}% também erram.` : `Errou. ${pct}% acertam essa.`;
+    }
+
+    function encerrar() {
+      el.telaPergunta.hidden = true;
+      el.rodape.hidden = true;
+      el.telaFinal.hidden = false;
+      el.passo.textContent = 'fim';
+      el.preenchido.style.width = '100%';
+      el.placarFinal.textContent = `${acertos}/${rodada.length}`;
+      el.comparacao.textContent = comparacaoComAMedia();
+    }
+
+    /**
+     * Compara com a media esperada, somando a taxa de acerto de cada pergunta:
+     * a soma das probabilidades e quantas uma pessoa media acertaria nesta
+     * rodada. So aparece quando ha estatistica em boa parte das perguntas.
+     */
+    function comparacaoComAMedia(): string {
+      const comDados = rodada.filter((p) => p.taxaAcerto !== null);
+      if (comDados.length / rodada.length < COBERTURA_MINIMA) {
+        return 'Ainda não há respostas suficientes para comparar com a média.';
+      }
+
+      const mediaParcial = comDados.reduce((soma, p) => soma + (p.taxaAcerto ?? 0), 0);
+      const media = (mediaParcial / comDados.length) * rodada.length;
+      const arredondada = media.toFixed(1).replace('.', ',');
+
+      if (acertos > media + 0.5) return `A média acerta ${arredondada}. Você foi melhor. 🔥`;
+      if (acertos < media - 0.5) return `A média acerta ${arredondada}. Dessa vez ela levou.`;
+      return `A média acerta ${arredondada}. Você ficou em cima dela.`;
+    }
+  }
+</script>
+
+<style>
+  .vazio {
+    padding: 4rem 0;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 1.6rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .voltar {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .sequencia {
+    color: var(--warn);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .progresso {
+    display: grid;
+    gap: 0.45rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .passo {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .trilho {
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--surface-2);
+  }
+
+  .preenchido {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--a), var(--b));
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .enunciado {
+    margin-bottom: 1.5rem;
+    font-size: clamp(1.35rem, 5.8vw, 1.7rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .alternativas {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .alt {
+    min-height: var(--tap);
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 1.02rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      border-color 0.2s ease,
+      background 0.2s ease;
+  }
+
+  .alt:active:not(:disabled) {
+    transform: scale(0.99);
+  }
+
+  .alt:disabled {
+    cursor: default;
+  }
+
+  .alt.certa {
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 18%, var(--surface));
+  }
+
+  .alt.errada {
+    border-color: var(--a);
+    background: color-mix(in srgb, var(--a) 18%, var(--surface));
+  }
+
+  .depois {
+    padding-top: 1.4rem;
+    animation: subir 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .veredito {
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+
+  .explicacao {
+    padding-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .proxima {
+    width: 100%;
+    min-height: var(--tap);
+    margin-top: 1.25rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(100deg, var(--a), var(--b));
+    color: var(--text);
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .final {
+    padding-top: 1rem;
+    text-align: center;
+  }
+
+  .placar-final {
+    font-size: clamp(3rem, 18vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    background: linear-gradient(100deg, var(--a), var(--b) 60%, var(--c));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .comparacao {
+    padding-top: 0.75rem;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .mais {
+    display: block;
+    padding-top: 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+  }
+</style>

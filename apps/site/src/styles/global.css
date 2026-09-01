@@ -38,6 +38,14 @@
   box-sizing: border-box;
 }
 
+/* O `display: none` do atributo `hidden` vem da folha do navegador, entao
+   qualquer regra nossa com `display` o vence por especificidade e o elemento
+   reaparece. Como o site inteiro liga e desliga tela com `el.hidden`, a regra
+   precisa ganhar sempre. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }

@@ -58,9 +58,6 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
         <div class="depois" data-depois hidden>
           <p class="veredito" data-veredito aria-live="polite" />
           <p class="votos" data-votos />
-          <button class="proxima" data-proxima type="button">
-            Próxima →
-          </button>
         </div>
 
         <a class="mais" href="/">🎮 Ver mais jogos</a>
@@ -101,6 +98,9 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
    */
   const VOTOS_MINIMOS_PARA_PORCENTAGEM = 20;
 
+  /** Quanto o resultado fica na tela antes do proximo dilema entrar sozinho. */
+  const PAUSA_DO_REVEAL = 1500;
+
   const jogo = document.querySelector<HTMLElement>('.jogo');
   if (jogo) iniciar(jogo);
 
@@ -111,7 +111,6 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
       depois: jogo.querySelector<HTMLElement>('[data-depois]')!,
       veredito: jogo.querySelector<HTMLElement>('[data-veredito]')!,
       votos: jogo.querySelector<HTMLElement>('[data-votos]')!,
-      proxima: jogo.querySelector<HTMLButtonElement>('[data-proxima]')!,
       opcoes: {
         a: jogo.querySelector<HTMLButtonElement>('[data-op="a"]')!,
         b: jogo.querySelector<HTMLButtonElement>('[data-op="b"]')!,
@@ -184,7 +183,6 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
 
     el.opcoes.a.addEventListener('click', () => votar('a'));
     el.opcoes.b.addEventListener('click', () => votar('b'));
-    el.proxima.addEventListener('click', avancar);
 
     async function abastecer() {
       if (fila.length >= 2) return;
@@ -259,6 +257,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
       }
 
       abastecer();
+      setTimeout(avancar, PAUSA_DO_REVEAL);
     }
 
     function revelar(resultado: Resultado, escolha: 'a' | 'b') {
@@ -368,9 +367,9 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
     min-height: 7.5rem;
     padding: 1.25rem;
     overflow: hidden;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--cor) 38%, var(--border));
     border-radius: var(--radius);
-    background: var(--surface);
+    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 16%, var(--surface)), var(--surface));
     text-align: left;
     cursor: pointer;
     transition:
@@ -466,23 +465,6 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
     color: var(--muted);
     font-size: 0.9rem;
     font-variant-numeric: tabular-nums;
-  }
-
-  .proxima {
-    width: 100%;
-    min-height: var(--tap);
-    margin-top: 1.25rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(100deg, var(--a), var(--b));
-    font-size: 1.05rem;
-    font-weight: 800;
-    cursor: pointer;
-    transition: transform 0.12s ease;
-  }
-
-  .proxima:active {
-    transform: scale(0.98);
   }
 
   .mais {

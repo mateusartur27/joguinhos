@@ -313,11 +313,12 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .alt {
+    --cor: var(--border);
     min-height: var(--tap);
     padding: 1rem 1.1rem;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--cor) 30%, var(--border));
     border-radius: var(--radius-sm);
-    background: var(--surface);
+    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 12%, var(--surface)), var(--surface));
     font-size: 1.02rem;
     font-weight: 600;
     text-align: left;
@@ -330,6 +331,18 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
   .alt:active:not(:disabled) {
     transform: scale(0.99);
+  }
+
+  .alt:nth-child(3n + 1) {
+    --cor: var(--a);
+  }
+
+  .alt:nth-child(3n + 2) {
+    --cor: var(--b);
+  }
+
+  .alt:nth-child(3n + 3) {
+    --cor: var(--c);
   }
 
   .alt:disabled {

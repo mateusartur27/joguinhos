@@ -3,21 +3,23 @@
  *
  * Tema escuro unico e deliberado: o produto e feito para ser aberto de noite,
  * no celular, vindo de um video — nao ha caso de uso de leitura longa que
- * justifique um tema claro, e manter um so tema mantem o CSS pequeno.
+ * justifique um tema claro, e manter um so tema mantem o CSS pequeno. Escuro
+ * nao e sinonimo de sem-graca: o brilho de fundo usa as tres cores de acento
+ * (rosa/roxo/ciano) em vez de um unico tom, e essas mesmas cores tingem os
+ * cartoes e botoes em repouso, nao so quando revelam resultado.
  *
  * Nenhuma webfont: a pessoa chega de link do TikTok em 4G e o primeiro
  * conteudo nao pode esperar download de fonte.
  */
 
 :root {
-  --bg: #08080f;
-  --bg-glow: #140e2b;
-  --surface: #15151f;
-  --surface-2: #1f1f2e;
-  --border: #2c2c3f;
+  --bg: #0a0714;
+  --surface: #18122a;
+  --surface-2: #241a3d;
+  --border: #3c2f5c;
 
-  --text: #f4f4fa;
-  --muted: #9d9dba;
+  --text: #f6f4ff;
+  --muted: #ab9fd4;
 
   --a: #ff3d81; /* rosa */
   --b: #7c4dff; /* roxo */
@@ -56,7 +58,9 @@ body {
   font-family: var(--font);
   color: var(--text);
   background:
-    radial-gradient(90rem 45rem at 50% -20%, var(--bg-glow), transparent 60%),
+    radial-gradient(50rem 38rem at 8% -8%, color-mix(in srgb, var(--a) 40%, transparent), transparent 60%),
+    radial-gradient(46rem 38rem at 105% 6%, color-mix(in srgb, var(--c) 32%, transparent), transparent 58%),
+    radial-gradient(62rem 52rem at 45% 108%, color-mix(in srgb, var(--b) 36%, transparent), transparent 62%),
     var(--bg);
   -webkit-font-smoothing: antialiased;
   /* Impede o "puxar para atualizar" atrapalhar quem toca rapido nos botoes. */

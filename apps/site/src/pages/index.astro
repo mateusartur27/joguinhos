@@ -97,10 +97,10 @@ const jogos = await buscarJogos(env.DB);
     gap: 0.9rem;
     min-height: var(--tap);
     padding: 1.05rem 1.1rem;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--tom) 26%, var(--border));
     border-left: 3px solid var(--tom);
     border-radius: var(--radius);
-    background: var(--surface);
+    background: linear-gradient(155deg, color-mix(in srgb, var(--tom) 12%, var(--surface)), var(--surface));
     text-decoration: none;
     transition:
       transform 0.12s ease,
@@ -118,7 +118,7 @@ const jogos = await buscarJogos(env.DB);
     width: 3rem;
     height: 3rem;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--tom) 16%, transparent);
+    background: color-mix(in srgb, var(--tom) 26%, transparent);
     font-size: 1.5rem;
   }
 

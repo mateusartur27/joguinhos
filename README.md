@@ -88,6 +88,20 @@ secrets do Worker em produção.
 O acervo inicial (dilemas, listas, perguntas) vai como migração, e não como
 script de seed: um banco novo precisa nascer jogável.
 
+## Deploy automático
+
+Push em `main` publica sozinho via Workers Builds (dois gatilhos, um por
+worker, ambos apontando pro mesmo repo):
+
+| Worker | Build | Deploy |
+| --- | --- | --- |
+| `joguinhos` | `npm run build --workspace apps/site` | `npm run deploy:only --workspace apps/site` |
+| `joguinhos-content` | `npm run check --workspace apps/content-engine` | `npm run deploy --workspace apps/content-engine` |
+
+`deploy:only` existe porque `wrangler deploy` precisa rodar com o cwd em
+`apps/site` — é de lá que o adapter do Astro resolve `assets.directory`;
+chamado da raiz do repo com `--config`, falha com configuração incompleta.
+
 ## Comandos
 
 ```bash

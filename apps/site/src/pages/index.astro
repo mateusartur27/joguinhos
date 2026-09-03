@@ -5,6 +5,10 @@ import Base from '../layouts/Base.astro';
 import { buscarJogos } from '../lib/db/jogos';
 
 const jogos = await buscarJogos(env.DB);
+
+// Sem acento para "voce" encontrar "Você" — a mesma normalizacao roda nos
+// dois lados (aqui no texto indexado, no script no que a pessoa digita).
+const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '');
 ---
 
 <Base
@@ -21,20 +25,39 @@ const jogos = await buscarJogos(env.DB);
       jogos.length === 0 ? (
         <p class="vazio">Nenhum jogo publicado ainda.</p>
       ) : (
-        <ul class="catalogo">
-          {jogos.map((jogo) => (
-            <li>
-              <a class="cartao" href={jogo.href} style={`--tom: ${jogo.cor};`}>
-                <span class="emoji">{jogo.emoji}</span>
-                <span class="conteudo">
-                  <span class="titulo">{jogo.titulo}</span>
-                  <span class="chamada">{jogo.chamada}</span>
-                </span>
-                <span class="seta">→</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <Fragment>
+          <div class="busca">
+            <span class="lupa" aria-hidden="true">
+              🔎
+            </span>
+            <input
+              type="search"
+              id="busca-jogos"
+              placeholder="Buscar jogo..."
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+          </div>
+
+          <ul class="catalogo" data-catalogo>
+            {jogos.map((jogo) => (
+              <li data-item data-busca={semAcento(`${jogo.titulo} ${jogo.chamada}`).toLowerCase()}>
+                <a class="cartao" href={jogo.href} style={`--tom: ${jogo.cor};`}>
+                  <span class="emoji">{jogo.emoji}</span>
+                  <span class="conteudo">
+                    <span class="titulo">{jogo.titulo}</span>
+                    <span class="chamada">{jogo.chamada}</span>
+                  </span>
+                  <span class="seta">→</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <p class="vazio" data-sem-resultado hidden>
+            Nenhum jogo encontrado.
+          </p>
+        </Fragment>
       )
     }
 
@@ -46,6 +69,31 @@ const jogos = await buscarJogos(env.DB);
     </p>
   </main>
 </Base>
+
+<script>
+  const campo = document.querySelector<HTMLInputElement>('#busca-jogos');
+  const itens = [...document.querySelectorAll<HTMLElement>('[data-item]')];
+  const semResultado = document.querySelector<HTMLElement>('[data-sem-resultado]');
+  if (!campo) {
+    // Sem jogo publicado, a busca nem existe no HTML — nada a fazer.
+  } else {
+    campo.addEventListener('input', () => {
+      const termo = campo.value
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .trim();
+
+      let visiveis = 0;
+      for (const item of itens) {
+        const bate = (item.dataset.busca ?? '').includes(termo);
+        item.hidden = !bate;
+        if (bate) visiveis += 1;
+      }
+      if (semResultado) semResultado.hidden = visiveis > 0;
+    });
+  }
+</script>
 
 <style>
   h1 {
@@ -76,10 +124,53 @@ const jogos = await buscarJogos(env.DB);
     text-align: center;
   }
 
+  .busca {
+    position: relative;
+    margin-top: 1.75rem;
+  }
+
+  .lupa {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    font-size: 1rem;
+    opacity: 0.6;
+    transform: translateY(-50%);
+  }
+
+  #busca-jogos {
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0 1rem 0 2.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 1rem;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #busca-jogos::placeholder {
+    color: var(--muted);
+  }
+
+  /* Remove o "x" nativo do input search no Chrome/Safari — o feedback de
+     "sem resultado" ja cobre o caso de busca vazia. */
+  #busca-jogos::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  #busca-jogos:focus-visible {
+    outline: 2px solid var(--b);
+    outline-offset: 1px;
+  }
+
   .catalogo {
     display: grid;
     gap: 0.7rem;
-    margin: 1.75rem 0 0;
+    margin: 1.25rem 0 0;
     padding: 0;
     list-style: none;
   }

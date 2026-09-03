@@ -32,7 +32,9 @@
     "GEMINI_CALLS_PER_MINUTE": "10",
     // "true" so depois que a conta Google tiver faturamento habilitado -
     // ver o comentario em src/geradores/quiz.ts.
-    "GEMINI_GROUNDING_ENABLED": "false"
+    "GEMINI_GROUNDING_ENABLED": "false",
+    // "true" publica direto, sem rascunho - ver o comentario em src/index.ts.
+    "PUBLICAR_AUTOMATICO": "true"
   },
 
   "observability": {

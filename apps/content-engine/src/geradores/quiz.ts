@@ -76,6 +76,7 @@ export async function gerarPerguntas(
   temaSlug: string,
   quantidade: number,
   comBusca: boolean,
+  statusInicial: 'draft' | 'published',
 ): Promise<ResultadoGeracao> {
   const tema = await db
     .prepare('SELECT slug, title FROM quiz_topics WHERE slug = ?')
@@ -119,7 +120,7 @@ export async function gerarPerguntas(
       .prepare(
         `INSERT INTO quiz_questions
            (topic_slug, prompt, choices_json, correct_index, explanation, status, source)
-         VALUES (?, ?, ?, ?, ?, 'draft', 'gemini')`,
+         VALUES (?, ?, ?, ?, ?, ?, 'gemini')`,
       )
       .bind(
         temaSlug,
@@ -127,6 +128,7 @@ export async function gerarPerguntas(
         JSON.stringify(candidato.alternativas.map((a) => a.trim())),
         candidato.indiceCorreto,
         candidato.explicacao.trim(),
+        statusInicial,
       )
       .run();
     inseridos += 1;

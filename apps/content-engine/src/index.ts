@@ -16,6 +16,13 @@ interface Ambiente {
    * pergunta e gerada, o que e pior que gerar sem busca.
    */
   GEMINI_GROUNDING_ENABLED: string;
+  /**
+   * "true" publica direto, sem passar por rascunho. Decisao explicita do
+   * dono do produto: e um jogo, nao noticia, e o erro observado (apelido de
+   * personagem inventado) e menos grave que o custo de revisar toda vez.
+   * "false" volta ao fluxo de rascunho + `scripts/conteudo.mjs`.
+   */
+  PUBLICAR_AUTOMATICO: string;
   ADMIN_TOKEN: string;
 }
 
@@ -30,9 +37,18 @@ interface Relatorio {
 /**
  * Uma execucao do motor de conteudo.
  *
- * Tudo que entra fica como `draft`. Publicar automaticamente texto de LLM num
- * site com AdSense e assumir dois riscos de uma vez: erro factual no quiz e
- * violacao de politica no dilema. A revisao e barata; a suspensao nao.
+ * `PUBLICAR_AUTOMATICO=true` (padrao) pula a fila de rascunho: o que o
+ * Gemini gera vai direto ao ar. Decisao explicita do dono do produto — e um
+ * jogo, nao noticia, e o erro real ja visto (apelido de personagem inventado
+ * no quiz) e um resultado errado num microjogo, nao uma noticia falsa.
+ *
+ * O prompt do quiz (`geradores/quiz.ts`) ja pede fato objetivo e evita
+ * apelido/epiteto de proposito por causa desse erro. O que a automacao total
+ * NAO cobre e conteudo do dilema que viole politica do AdSense (o outro risco
+ * documentado no README) — a instrucao do dilema ja proibe os temas
+ * sensiveis, mas nada aqui verifica se o modelo obedeceu. Se um lote parecer
+ * suspeito, `PUBLICAR_AUTOMATICO=false` volta ao fluxo de rascunho +
+ * `scripts/conteudo.mjs`.
  */
 async function executar(env: Ambiente): Promise<Relatorio> {
   const store = new D1RateLimitReservationStore(env.DB);
@@ -53,14 +69,22 @@ async function executar(env: Ambiente): Promise<Relatorio> {
     fetch: fetchLimitado,
   });
 
-  const dilemas = await gerarDilemas(env.DB, gemini, DILEMAS_POR_EXECUCAO);
+  const statusInicial = env.PUBLICAR_AUTOMATICO === 'true' ? 'published' : 'draft';
+  const dilemas = await gerarDilemas(env.DB, gemini, DILEMAS_POR_EXECUCAO, statusInicial);
 
   const comBusca = env.GEMINI_GROUNDING_ENABLED === 'true';
   const tema = await temaDoDia(env.DB);
   const quiz = tema
     ? {
         tema,
-        ...(await gerarPerguntas(env.DB, gemini, tema, PERGUNTAS_POR_EXECUCAO, comBusca)),
+        ...(await gerarPerguntas(
+          env.DB,
+          gemini,
+          tema,
+          PERGUNTAS_POR_EXECUCAO,
+          comBusca,
+          statusInicial,
+        )),
       }
     : null;
 

@@ -56,28 +56,38 @@ que atende tráfego público.
 
 ## Motor de conteúdo
 
-Roda todo dia às 9h UTC e grava **tudo como rascunho**. Publicar texto de LLM
-automaticamente num site com AdSense assume dois riscos de uma vez: erro
-factual no quiz e violação de política no dilema.
+Roda todo dia às 9h UTC e **publica direto** (`PUBLICAR_AUTOMATICO=true` em
+`apps/content-engine/wrangler.jsonc`). Decisão explícita do dono do produto:
+é um jogo, não notícia, e o custo de revisar todo lote manualmente pesava mais
+que o risco de um resultado errado num microjogo.
 
-Isso não é precaução teórica — no primeiro lote real, 2 de 8 dilemas não
-prestavam e 1 de 5 perguntas trazia uma alternativa em espanhol
-("Jogo peligroso"). Um lote seguinte trouxe uma pergunta afirmando que Kratos
-é "conhecido como o Bom de Guerra" — apelido que não existe (o real é
-"Fantasma de Esparta"). Padrão claro: o risco concentra no quiz (fato
-verificável), não no dilema (opinião não tem como estar "errada").
+Isso já mostrou dois tipos de erro reais, e vale saber a diferença:
 
-A instrução do quiz agora pede fatos objetivos (nome, data, quantidade,
-mecânica) e evita de propósito apelido, epíteto ou frase atribuída — é
-exatamente o tipo de "fato" que o modelo inventa com confiança. O gerador já
-tem suporte pronto para busca do Google como reforço (`GEMINI_GROUNDING_ENABLED`
-em `apps/content-engine/wrangler.jsonc`), mas ligar isso quebra a geração
-inteira com 429 até a conta Google ter faturamento habilitado — mesmo
-obstáculo já visto na geração de música. Fica `false` até isso existir.
+- **Fato errado no quiz** — no primeiro lote, 1 de 5 perguntas trazia uma
+  alternativa em espanhol ("Jogo peligroso"); num lote seguinte, uma pergunta
+  afirmava que Kratos é "conhecido como o Bom de Guerra" — apelido que não
+  existe (o real é "Fantasma de Esparta"). A instrução do quiz agora pede
+  fatos objetivos (nome, data, quantidade, mecânica) e evita de propósito
+  apelido, epíteto ou frase atribuída — é exatamente o tipo de "fato" que o
+  modelo inventa com confiança. Reduz bastante, não elimina: sem verificação
+  externa, uma resposta errada ocasional ainda pode ir ao ar.
+- **Dilema fora de política** (sexual, violência, drogas, política partidária,
+  religião, ofensa a pessoa real) — a instrução já proíbe esses temas, mas com
+  publicação automática nada verifica se o modelo obedeceu. Esse é o risco que
+  importa mais: um resultado de quiz errado incomoda; uma violação de política
+  pode custar a conta de anúncio inteira depois que o AdSense for aprovado.
+
+O gerador tem suporte pronto para busca do Google como reforço de fato
+(`GEMINI_GROUNDING_ENABLED`), mas ligar isso quebra a geração inteira com 429
+até a conta Google ter faturamento habilitado — mesmo obstáculo já visto na
+geração de música. Fica `false` até isso existir.
 
 Toda chamada ao Gemini passa pelo `createRateLimitedFetch` com reserva em D1,
 portado do `gerador-de-video`: o escopo da proteção precisa ser a conta
 inteira, e o D1 é o único estado que as execuções já compartilham.
+
+Se um lote parecer suspeito (ou perto da aprovação do AdSense, quando o risco
+de política pesa mais), `PUBLICAR_AUTOMATICO=false` volta ao fluxo de rascunho:
 
 ```bash
 npm run content:rascunhos               # lista o que está esperando revisão

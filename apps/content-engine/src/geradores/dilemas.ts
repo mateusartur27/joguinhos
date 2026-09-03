@@ -67,6 +67,7 @@ export async function gerarDilemas(
   db: D1Database,
   gemini: Gemini,
   quantidade: number,
+  statusInicial: 'draft' | 'published',
 ): Promise<ResultadoGeracao> {
   const { results: existentes } = await db
     .prepare(
@@ -107,7 +108,7 @@ export async function gerarDilemas(
     await db
       .prepare(
         `INSERT INTO dilemmas (category, option_a, option_b, status, source)
-         VALUES (?, ?, ?, 'draft', 'gemini')`,
+         VALUES (?, ?, ?, ?, 'gemini')`,
       )
       .bind(
         CATEGORIAS.includes(candidato.categoria as (typeof CATEGORIAS)[number])
@@ -115,6 +116,7 @@ export async function gerarDilemas(
           : 'vida',
         candidato.opcaoA.trim(),
         candidato.opcaoB.trim(),
+        statusInicial,
       )
       .run();
     inseridos += 1;

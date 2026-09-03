@@ -88,7 +88,7 @@ const duelo = await sortearDuelo(env.DB, slug);
   const DUELOS_MINIMOS_PARA_TAXA = 10;
 
   /** Quanto o resultado fica na tela antes do proximo duelo entrar. */
-  const PAUSA_DO_REVEAL = 1100;
+  const PAUSA_DO_REVEAL = 300;
 
   const jogo = document.querySelector<HTMLElement>('.jogo');
   if (jogo) iniciar(jogo);
@@ -311,7 +311,7 @@ const duelo = await sortearDuelo(env.DB, slug);
     padding: 1.25rem;
     border: 1px solid color-mix(in srgb, var(--cor) 38%, var(--border));
     border-radius: var(--radius);
-    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 16%, var(--surface)), var(--surface));
+    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 34%, var(--surface)), var(--surface));
     cursor: pointer;
     transition:
       transform 0.12s ease,
@@ -333,7 +333,7 @@ const duelo = await sortearDuelo(env.DB, slug);
 
   .op.escolhida {
     border-color: var(--cor);
-    background: color-mix(in srgb, var(--cor) 22%, var(--surface));
+    background: color-mix(in srgb, var(--cor) 42%, var(--surface));
   }
 
   .rotulo {

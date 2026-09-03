@@ -55,9 +55,6 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
           <div class="depois" data-depois hidden>
             <p class="veredito" data-veredito aria-live="polite" />
             <p class="explicacao" data-explicacao />
-            <button class="proxima" data-proxima type="button">
-              Próxima →
-            </button>
           </div>
         </section>
 
@@ -96,6 +93,9 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
    */
   const COBERTURA_MINIMA = 0.5;
 
+  /** Quanto o feedback fica na tela antes da proxima pergunta entrar sozinha. */
+  const PAUSA_DO_REVEAL = 2000;
+
   const jogo = document.querySelector<HTMLElement>('.jogo');
   if (jogo) iniciar(jogo);
 
@@ -109,7 +109,6 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
       depois: jogo.querySelector<HTMLElement>('[data-depois]')!,
       veredito: jogo.querySelector<HTMLElement>('[data-veredito]')!,
       explicacao: jogo.querySelector<HTMLElement>('[data-explicacao]')!,
-      proxima: jogo.querySelector<HTMLButtonElement>('[data-proxima]')!,
       telaPergunta: jogo.querySelector<HTMLElement>('[data-tela="pergunta"]')!,
       telaFinal: jogo.querySelector<HTMLElement>('[data-tela="final"]')!,
       placarFinal: jogo.querySelector<HTMLElement>('[data-placar-final]')!,
@@ -128,12 +127,6 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     let respondida = false;
 
     mostrar();
-
-    el.proxima.addEventListener('click', () => {
-      indice += 1;
-      if (indice >= rodada.length) encerrar();
-      else mostrar();
-    });
 
     el.deNovo.addEventListener('click', () => location.reload());
 
@@ -203,8 +196,13 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
       el.veredito.textContent = vereditoDe(acertou, pergunta.taxaAcerto);
       el.explicacao.textContent = pergunta.explicacao ?? '';
       el.preenchido.style.width = `${((indice + 1) / rodada.length) * 100}%`;
-      el.proxima.textContent = indice + 1 >= rodada.length ? 'Ver resultado →' : 'Próxima →';
       el.depois.hidden = false;
+
+      setTimeout(() => {
+        indice += 1;
+        if (indice >= rodada.length) encerrar();
+        else mostrar();
+      }, PAUSA_DO_REVEAL);
 
       // Contabiliza no banco sem travar a tela: o proximo toque nao espera isso.
       void fetch('/api/quiz/resposta', {
@@ -345,7 +343,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     padding: 0.85rem 1.1rem;
     border: 1px solid color-mix(in srgb, var(--cor) 40%, var(--border));
     border-radius: var(--radius-sm);
-    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 12%, var(--surface)), var(--surface));
+    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 30%, var(--surface)), var(--surface));
     font-size: 1.02rem;
     font-weight: 600;
     text-align: left;
@@ -402,13 +400,13 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   .alt.certa {
     --cor: var(--c);
     border-color: var(--cor);
-    background: color-mix(in srgb, var(--cor) 18%, var(--surface));
+    background: color-mix(in srgb, var(--cor) 36%, var(--surface));
   }
 
   .alt.errada {
     --cor: var(--a);
     border-color: var(--cor);
-    background: color-mix(in srgb, var(--cor) 18%, var(--surface));
+    background: color-mix(in srgb, var(--cor) 36%, var(--surface));
   }
 
   .depois {

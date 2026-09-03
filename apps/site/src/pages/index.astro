@@ -22,9 +22,9 @@ const jogos = await buscarJogos(env.DB);
         <p class="vazio">Nenhum jogo publicado ainda.</p>
       ) : (
         <ul class="catalogo">
-          {jogos.map((jogo, indice) => (
+          {jogos.map((jogo) => (
             <li>
-              <a class="cartao" href={jogo.href} style={`--tom: var(--tom-${indice % 3});`}>
+              <a class="cartao" href={jogo.href} style={`--tom: ${jogo.cor};`}>
                 <span class="emoji">{jogo.emoji}</span>
                 <span class="conteudo">
                   <span class="titulo">{jogo.titulo}</span>
@@ -48,12 +48,6 @@ const jogos = await buscarJogos(env.DB);
 </Base>
 
 <style>
-  main {
-    --tom-0: var(--b);
-    --tom-1: var(--a);
-    --tom-2: var(--c);
-  }
-
   h1 {
     margin: 0.5rem 0 0.75rem;
     font-size: clamp(2rem, 9vw, 2.75rem);
@@ -97,19 +91,18 @@ const jogos = await buscarJogos(env.DB);
     gap: 0.9rem;
     min-height: var(--tap);
     padding: 1.05rem 1.1rem;
-    border: 1px solid color-mix(in srgb, var(--tom) 26%, var(--border));
-    border-left: 3px solid var(--tom);
+    border: 1px solid color-mix(in srgb, var(--tom) 85%, black 12%);
     border-radius: var(--radius);
-    background: linear-gradient(155deg, color-mix(in srgb, var(--tom) 32%, var(--surface)), var(--surface));
+    background: var(--tom);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--tom) 80%, black 15%);
     text-decoration: none;
     transition:
       transform 0.12s ease,
-      background 0.2s ease;
+      box-shadow 0.2s ease;
   }
 
   .cartao:active {
     transform: scale(0.99);
-    background: var(--surface-2);
   }
 
   .emoji {
@@ -118,7 +111,7 @@ const jogos = await buscarJogos(env.DB);
     width: 3rem;
     height: 3rem;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--tom) 45%, transparent);
+    background: rgba(255, 255, 255, 0.24);
     font-size: 1.5rem;
   }
 
@@ -128,19 +121,20 @@ const jogos = await buscarJogos(env.DB);
   }
 
   .titulo {
+    color: #fff;
     font-size: 1.05rem;
     font-weight: 800;
     letter-spacing: -0.01em;
   }
 
   .chamada {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 0.85rem;
     line-height: 1.35;
   }
 
   .seta {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 1.1rem;
     text-align: right;
   }

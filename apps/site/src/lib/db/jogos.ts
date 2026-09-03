@@ -13,12 +13,29 @@ export interface Jogo {
   emoji: string;
   tipo: string;
   href: string;
+  cor: string;
+}
+
+/**
+ * Cor de um unico jogo pelo slug em `games`.
+ *
+ * Existe para paginas que sao um jogo so (Escolhas Impossiveis nao tem uma
+ * tabela por item, e um dilema so tem categoria) e ainda assim precisam da
+ * cor vir do banco, nao hardcoded na pagina — a mesma regra do catalogo da
+ * home vale aqui: cor e dado do jogo, nao decisao do template.
+ */
+export async function buscarCorDoJogo(db: D1Database, slug: string): Promise<string> {
+  const linha = await db
+    .prepare(`SELECT color FROM games WHERE slug = ? AND status = 'published'`)
+    .bind(slug)
+    .first<{ color: string }>();
+  return linha?.color ?? '#7c3aed';
 }
 
 export async function buscarJogos(db: D1Database): Promise<Jogo[]> {
   const { results } = await db
     .prepare(
-      `SELECT slug, title, tagline, emoji, kind, href
+      `SELECT slug, title, tagline, emoji, kind, href, color
          FROM games
         WHERE status = 'published'
         ORDER BY sort_order ASC, title ASC`,
@@ -30,6 +47,7 @@ export async function buscarJogos(db: D1Database): Promise<Jogo[]> {
       emoji: string;
       kind: string;
       href: string;
+      color: string;
     }>();
 
   return results.map((linha) => ({
@@ -39,5 +57,6 @@ export async function buscarJogos(db: D1Database): Promise<Jogo[]> {
     emoji: linha.emoji,
     tipo: linha.kind,
     href: linha.href,
+    cor: linha.color,
   }));
 }

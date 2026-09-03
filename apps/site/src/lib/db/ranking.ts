@@ -9,6 +9,7 @@ export interface Lista {
   titulo: string;
   pergunta: string;
   emoji: string;
+  cor: string;
 }
 
 export interface Competidor {
@@ -53,12 +54,12 @@ export const DUELOS_MINIMOS_PARA_TAXA = 10;
 export async function buscarLista(db: D1Database, slug: string): Promise<Lista | null> {
   const linha = await db
     .prepare(
-      `SELECT slug, title, question, emoji
+      `SELECT slug, title, question, emoji, color
          FROM ranking_lists
         WHERE slug = ? AND status = 'published'`,
     )
     .bind(slug)
-    .first<{ slug: string; title: string; question: string; emoji: string }>();
+    .first<{ slug: string; title: string; question: string; emoji: string; color: string }>();
 
   if (!linha) return null;
   return {
@@ -66,6 +67,7 @@ export async function buscarLista(db: D1Database, slug: string): Promise<Lista |
     titulo: linha.title,
     pergunta: linha.question,
     emoji: linha.emoji,
+    cor: linha.color,
   };
 }
 

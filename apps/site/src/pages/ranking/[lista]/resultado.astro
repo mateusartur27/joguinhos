@@ -23,7 +23,7 @@ const medalhas = ['🥇', '🥈', '🥉'];
   title={`${lista.titulo}: o ranking do público — joguinhos`}
   description={`${lista.pergunta} Veja o ranking montado por ${numero.format(totalDuelos)} duelos do público.`}
 >
-  <main>
+  <main style={`--cor-jogo: ${lista.cor};`}>
     <p class="categoria">{lista.emoji} ranking coletivo</p>
     <h1>{lista.pergunta}</h1>
     <p class="sub">
@@ -108,8 +108,8 @@ const medalhas = ['🥇', '🥈', '🥉'];
   }
 
   .linha.podio {
-    border-color: color-mix(in srgb, var(--b) 45%, var(--border));
-    background: color-mix(in srgb, var(--b) 26%, var(--surface));
+    border-color: color-mix(in srgb, var(--cor-jogo) 55%, var(--border));
+    background: color-mix(in srgb, var(--cor-jogo) 20%, var(--surface));
   }
 
   .pos {
@@ -156,7 +156,9 @@ const medalhas = ['🥇', '🥈', '🥉'];
     min-height: var(--tap);
     padding: 1rem;
     border-radius: var(--radius-sm);
-    background: linear-gradient(100deg, var(--a), var(--b));
+    background: var(--cor-jogo);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--cor-jogo) 80%, black 15%);
+    color: #fff;
     font-size: 1.02rem;
     font-weight: 800;
     text-align: center;

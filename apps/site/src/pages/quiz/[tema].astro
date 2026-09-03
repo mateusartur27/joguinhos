@@ -25,7 +25,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     !primeira ? (
       <p class="vazio">Este tema ainda não tem perguntas publicadas.</p>
     ) : (
-      <main class="jogo">
+      <main class="jogo" style={`--cor-jogo: ${tema.cor};`}>
         <header class="cabecalho">
           <a class="voltar" href="/">← joguinhos</a>
           <span class="sequencia" data-sequencia />
@@ -317,7 +317,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   .preenchido {
     width: 0;
     height: 100%;
-    background: linear-gradient(90deg, var(--a), var(--b));
+    background: var(--cor-jogo);
     transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -335,23 +335,23 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .alt {
-    --cor: var(--border);
+    --cor: var(--cor-jogo);
     display: flex;
     align-items: center;
     gap: 0.85rem;
     min-height: var(--tap);
     padding: 0.85rem 1.1rem;
-    border: 1px solid color-mix(in srgb, var(--cor) 40%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--cor) 85%, black 12%);
     border-radius: var(--radius-sm);
-    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 30%, var(--surface)), var(--surface));
+    background: var(--cor);
+    box-shadow: 0 0.5rem 1.1rem -0.7rem color-mix(in srgb, var(--cor) 80%, black 15%);
+    color: #fff;
     font-size: 1.02rem;
     font-weight: 600;
     text-align: left;
     cursor: pointer;
     transition:
       transform 0.12s ease,
-      border-color 0.2s ease,
-      background 0.2s ease,
       box-shadow 0.2s ease;
   }
 
@@ -360,8 +360,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .alt:not(:disabled):hover {
-    border-color: var(--cor);
-    box-shadow: 0 0.4rem 1rem -0.5rem var(--cor);
+    box-shadow: 0 0.6rem 1.3rem -0.6rem color-mix(in srgb, var(--cor) 90%, black 10%);
   }
 
   .letra {
@@ -371,8 +370,8 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     width: 1.9rem;
     height: 1.9rem;
     border-radius: 999px;
-    background: var(--cor);
-    color: #fff;
+    background: #fff;
+    color: var(--cor);
     font-size: 0.85rem;
     font-weight: 800;
   }
@@ -381,32 +380,16 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     flex: 1;
   }
 
-  .alt:nth-child(3n + 1) {
-    --cor: var(--a);
-  }
-
-  .alt:nth-child(3n + 2) {
-    --cor: var(--b);
-  }
-
-  .alt:nth-child(3n + 3) {
-    --cor: var(--c);
-  }
-
   .alt:disabled {
     cursor: default;
   }
 
   .alt.certa {
     --cor: var(--c);
-    border-color: var(--cor);
-    background: color-mix(in srgb, var(--cor) 36%, var(--surface));
   }
 
   .alt.errada {
     --cor: var(--a);
-    border-color: var(--cor);
-    background: color-mix(in srgb, var(--cor) 36%, var(--surface));
   }
 
   .depois {

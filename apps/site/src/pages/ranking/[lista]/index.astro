@@ -21,7 +21,7 @@ const duelo = await sortearDuelo(env.DB, slug);
     !duelo ? (
       <p class="vazio">Esta lista ainda não tem competidores suficientes.</p>
     ) : (
-      <main class="jogo" data-lista={slug}>
+      <main class="jogo" data-lista={slug} style={`--cor-jogo: ${lista.cor};`}>
         <header class="cabecalho">
           <a class="voltar" href="/">← joguinhos</a>
           <span class="placar" data-placar>
@@ -302,6 +302,7 @@ const duelo = await sortearDuelo(env.DB, slug);
   }
 
   .op {
+    --cor: var(--cor-jogo);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -309,22 +310,14 @@ const duelo = await sortearDuelo(env.DB, slug);
     gap: 0.4rem;
     min-height: 8rem;
     padding: 1.25rem;
-    border: 1px solid color-mix(in srgb, var(--cor) 38%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--cor) 85%, black 12%);
     border-radius: var(--radius);
-    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 34%, var(--surface)), var(--surface));
+    background: var(--cor);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--cor) 80%, black 15%);
     cursor: pointer;
     transition:
       transform 0.12s ease,
-      border-color 0.2s ease,
-      background 0.2s ease;
-  }
-
-  .op[data-op='a'] {
-    --cor: var(--b);
-  }
-
-  .op[data-op='b'] {
-    --cor: var(--a);
+      box-shadow 0.2s ease;
   }
 
   .op:active:not(:disabled) {
@@ -332,11 +325,11 @@ const duelo = await sortearDuelo(env.DB, slug);
   }
 
   .op.escolhida {
-    border-color: var(--cor);
-    background: color-mix(in srgb, var(--cor) 42%, var(--surface));
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.85);
   }
 
   .rotulo {
+    color: #fff;
     font-size: 1.4rem;
     font-weight: 800;
     line-height: 1.15;
@@ -346,7 +339,7 @@ const duelo = await sortearDuelo(env.DB, slug);
 
   .pct {
     height: 1.5rem;
-    color: var(--cor);
+    color: #fff;
     font-size: 1.3rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -380,7 +373,7 @@ const duelo = await sortearDuelo(env.DB, slug);
   .reveal {
     min-height: 2.75rem;
     padding-top: 1rem;
-    color: var(--c);
+    color: var(--cor-jogo);
     font-size: 0.92rem;
     font-weight: 600;
     line-height: 1.35;

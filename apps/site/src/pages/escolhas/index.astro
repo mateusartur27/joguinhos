@@ -2,12 +2,14 @@
 import { env } from 'cloudflare:workers';
 import Base from '../../layouts/Base.astro';
 import { sortearDilemas } from '../../lib/db/dilemas';
+import { buscarCorDoJogo } from '../../lib/db/jogos';
 
 // Renderizado no servidor com o primeiro dilema ja no HTML. Quem chega de um
 // link do TikTok nao pode ver tela vazia esperando `fetch`: o primeiro toque
 // tem que estar disponivel no primeiro quadro pintado.
 const fila = await sortearDilemas(env.DB, { limite: 3 });
 const primeiro = fila[0];
+const cor = await buscarCorDoJogo(env.DB, 'escolhas');
 
 // `<` vira escape unicode para que nenhum texto de dilema consiga fechar a tag
 // do script embutido. Vale menos pelo acervo escrito a mao e mais pelo que o
@@ -24,7 +26,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
     !primeiro ? (
       <p class="vazio">Sem dilemas publicados ainda. Volte em instantes.</p>
     ) : (
-      <main class="jogo">
+      <main class="jogo" style={`--cor-jogo: ${cor};`}>
         <header class="cabecalho">
           <a class="voltar" href="/">← joguinhos</a>
           <span class="placar" data-placar>0 escolhas</span>
@@ -359,6 +361,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   }
 
   .op {
+    --cor: var(--cor-jogo);
     position: relative;
     display: flex;
     align-items: center;
@@ -367,26 +370,19 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
     min-height: 7.5rem;
     padding: 1.25rem;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--cor) 38%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--cor) 85%, black 12%);
     border-radius: var(--radius);
-    background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 34%, var(--surface)), var(--surface));
+    background: var(--cor);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--cor) 80%, black 15%);
     text-align: left;
     cursor: pointer;
     transition:
       transform 0.12s ease,
-      border-color 0.2s ease;
+      box-shadow 0.2s ease;
   }
 
   .op:active:not(:disabled) {
     transform: scale(0.98);
-  }
-
-  .op[data-op='a'] {
-    --cor: var(--b);
-  }
-
-  .op[data-op='b'] {
-    --cor: var(--a);
   }
 
   .op:disabled {
@@ -394,21 +390,22 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   }
 
   .op.escolhida {
-    border-color: var(--cor);
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.85);
   }
 
-  /* Preenchimento proporcional ao resultado. Cresce por tras do texto, entao a
-     leitura nao depende da animacao terminar. */
+  /* Preenchimento proporcional ao resultado. Clareia o cartao (que ja e a cor
+     solida) em vez de tingir uma superficie neutra. */
   .barra {
     position: absolute;
     inset: 0 auto 0 0;
     width: 0;
-    background: color-mix(in srgb, var(--cor) 30%, transparent);
+    background: rgba(255, 255, 255, 0.32);
     transition: width 0.75s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .rotulo {
     position: relative;
+    color: #fff;
     font-size: 1.15rem;
     font-weight: 700;
     line-height: 1.25;
@@ -417,7 +414,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   .pct {
     position: relative;
     flex: none;
-    color: var(--cor);
+    color: #fff;
     font-size: 1.5rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;

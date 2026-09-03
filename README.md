@@ -27,6 +27,16 @@ saem daí e valem em todo o código:
 | Ranking Coletivo | `/ranking/[lista]` | Duelos par a par alimentando um ranking por Elo |
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 
+## Identidade visual
+
+Tema claro único, cor sólida e dominante — cada jogo tem sua própria cor
+(`games.color`, e a mesma coluna em `ranking_lists`/`quiz_topics` para a
+tela de jogo em si), não um ciclo de 3 tons por posição na lista. Cor é dado
+do jogo, não acidente de ordenação: se um jogo novo entrasse antes de outro
+no `sort_order`, um ciclo por índice mudaria a cor de um jogo existente sem
+ninguém pedir isso. Guardado como hex direto na tabela — o motor de conteúdo
+(ou uma tela de admin futura) pode atribuir cor a um jogo novo sem deploy.
+
 ## Stack
 
 - **Astro 7** com `@astrojs/cloudflare`, `output: 'server'`

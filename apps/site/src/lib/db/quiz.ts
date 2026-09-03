@@ -13,6 +13,7 @@ export interface Tema {
   titulo: string;
   emoji: string;
   dificuldade: string;
+  cor: string;
 }
 
 export interface Pergunta {
@@ -34,12 +35,12 @@ export const PERGUNTAS_POR_RODADA = 8;
 export async function buscarTema(db: D1Database, slug: string): Promise<Tema | null> {
   const linha = await db
     .prepare(
-      `SELECT slug, title, emoji, difficulty
+      `SELECT slug, title, emoji, difficulty, color
          FROM quiz_topics
         WHERE slug = ? AND status = 'published'`,
     )
     .bind(slug)
-    .first<{ slug: string; title: string; emoji: string; difficulty: string }>();
+    .first<{ slug: string; title: string; emoji: string; difficulty: string; color: string }>();
 
   if (!linha) return null;
   return {
@@ -47,6 +48,7 @@ export async function buscarTema(db: D1Database, slug: string): Promise<Tema | n
     titulo: linha.title,
     emoji: linha.emoji,
     dificuldade: linha.difficulty,
+    cor: linha.color,
   };
 }
 

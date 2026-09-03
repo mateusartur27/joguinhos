@@ -27,6 +27,14 @@ saem daí e valem em todo o código:
 | Ranking Coletivo | `/ranking/[lista]` | Duelos par a par alimentando um ranking por Elo |
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 
+Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
+`localStorage` do navegador e mandando-os de volta como exclusão na próxima
+rodada (`sortearRodada`/`sortearDilemas` aceitam uma lista de ids a pular).
+Sem isso, um tema com poucas perguntas publicadas (o caso real: `futebol`
+tinha 14 e a rodada sorteia 8 — "jogar de novo" caía quase sempre nas mesmas)
+repetia quase todo "jogar de novo". Se a exclusão esgotar o acervo do tema, a
+função cai para sorteio sem exclusão — repetir é melhor que tela vazia.
+
 ## Identidade visual
 
 Tema claro único, cor sólida e dominante — cada jogo tem sua própria cor

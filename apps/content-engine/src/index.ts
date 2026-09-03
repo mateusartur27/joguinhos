@@ -31,7 +31,7 @@ const PERGUNTAS_POR_EXECUCAO = 5;
 
 interface Relatorio {
   dilemas: ResultadoGeracao;
-  quiz: (ResultadoGeracao & { tema: string }) | null;
+  quiz: (ResultadoGeracao & { tema: string })[];
 }
 
 /**
@@ -73,41 +73,33 @@ async function executar(env: Ambiente): Promise<Relatorio> {
   const dilemas = await gerarDilemas(env.DB, gemini, DILEMAS_POR_EXECUCAO, statusInicial);
 
   const comBusca = env.GEMINI_GROUNDING_ENABLED === 'true';
-  const tema = await temaDoDia(env.DB);
-  const quiz = tema
-    ? {
-        tema,
-        ...(await gerarPerguntas(
-          env.DB,
-          gemini,
-          tema,
-          PERGUNTAS_POR_EXECUCAO,
-          comBusca,
-          statusInicial,
-        )),
-      }
-    : null;
+  const temas = await temasPublicados(env.DB);
+  const quiz: (ResultadoGeracao & { tema: string })[] = [];
+  for (const tema of temas) {
+    quiz.push({
+      tema,
+      ...(await gerarPerguntas(env.DB, gemini, tema, PERGUNTAS_POR_EXECUCAO, comBusca, statusInicial)),
+    });
+  }
 
   return { dilemas, quiz };
 }
 
 /**
- * Reveza os temas de quiz pelo dia.
+ * Todos os temas de quiz publicados, para gerar pergunta nova em cada um
+ * todo dia — nao so num tema por vez.
  *
- * Deterministico de proposito: duas execucoes no mesmo dia (o cron e uma
- * chamada manual) trabalham no mesmo tema, e a checagem de duplicata ja cobre
- * a sobreposicao. Sortear tema faria o acervo crescer torto, com temas
- * atendidos por acaso.
+ * Antes disso revezava um tema por dia (`diasDesdeEpoch % length`): com 3
+ * temas, cada um so recebia lote a cada 3 dias, e o acervo ficava pequeno
+ * demais para "jogar de novo" nao repetir pergunta na mesma sessao. Gerar
+ * para todos e so 2 chamadas a mais ao Gemini por dia — sem custo real com
+ * 3 temas.
  */
-async function temaDoDia(db: D1Database): Promise<string | null> {
+async function temasPublicados(db: D1Database): Promise<string[]> {
   const { results } = await db
     .prepare("SELECT slug FROM quiz_topics WHERE status = 'published' ORDER BY slug ASC")
     .all<{ slug: string }>();
-
-  if (results.length === 0) return null;
-
-  const diasDesdeEpoch = Math.floor(Date.now() / 86_400_000);
-  return results[diasDesdeEpoch % results.length]!.slug;
+  return results.map((linha) => linha.slug);
 }
 
 export default {

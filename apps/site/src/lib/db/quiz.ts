@@ -63,31 +63,62 @@ export async function buscarTema(db: D1Database, slug: string): Promise<Tema | n
   };
 }
 
-export async function sortearRodada(
+interface LinhaPergunta {
+  id: number;
+  prompt: string;
+  choices_json: string;
+  correct_index: number;
+  explanation: string | null;
+  times_shown: number;
+  times_correct: number;
+}
+
+async function buscarPerguntas(
   db: D1Database,
   temaSlug: string,
-  quantidade: number = PERGUNTAS_POR_RODADA,
-): Promise<Pergunta[]> {
+  quantidade: number,
+  excluirIds: number[],
+): Promise<LinhaPergunta[]> {
+  // `IN ()` vazio e erro de sintaxe no SQLite, entao o filtro so entra na
+  // query quando ha algo para excluir.
+  const filtroExclusao = excluirIds.length > 0 ? `AND id NOT IN (${excluirIds.map(() => '?').join(',')})` : '';
+
   const { results } = await db
     .prepare(
       `SELECT id, prompt, choices_json, correct_index, explanation, times_shown, times_correct
          FROM quiz_questions
-        WHERE topic_slug = ? AND status = 'published'
+        WHERE topic_slug = ? AND status = 'published' ${filtroExclusao}
         ORDER BY RANDOM()
         LIMIT ?`,
     )
-    .bind(temaSlug, quantidade)
-    .all<{
-      id: number;
-      prompt: string;
-      choices_json: string;
-      correct_index: number;
-      explanation: string | null;
-      times_shown: number;
-      times_correct: number;
-    }>();
+    .bind(temaSlug, ...excluirIds, quantidade)
+    .all<LinhaPergunta>();
 
-  return results.flatMap((linha) => {
+  return results;
+}
+
+/**
+ * Sorteia uma rodada, evitando repetir perguntas ja vistas nesta sessao.
+ *
+ * `excluirIds` vem do cliente (localStorage, mesmo padrao de Escolhas
+ * Impossiveis) — sem isso, "jogar de novo" sorteava de novo entre as mesmas
+ * poucas perguntas do tema e caia quase sempre nas mesmas. Se a exclusao
+ * esgotar o acervo do tema (`resultados.length === 0`), a funcao cai para o
+ * sorteio sem exclusao: repetir e melhor que mostrar tela vazia para quem ja
+ * viu tudo.
+ */
+export async function sortearRodada(
+  db: D1Database,
+  temaSlug: string,
+  quantidade: number = PERGUNTAS_POR_RODADA,
+  excluirIds: number[] = [],
+): Promise<Pergunta[]> {
+  const linhas = await buscarPerguntas(db, temaSlug, quantidade, excluirIds);
+  const resultado = linhas.length > 0 || excluirIds.length === 0
+    ? linhas
+    : await buscarPerguntas(db, temaSlug, quantidade, []);
+
+  return resultado.flatMap((linha) => {
     let alternativas: unknown;
     try {
       alternativas = JSON.parse(linha.choices_json);

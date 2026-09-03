@@ -8,7 +8,15 @@ const slug = Astro.params.tema!;
 const tema = await buscarTema(env.DB, slug);
 if (!tema) return new Response('Tema não encontrado', { status: 404 });
 
-const rodada = await sortearRodada(env.DB, slug);
+// "Jogar de novo" manda os ids ja vistos aqui (localStorage do cliente, nao
+// tem outro jeito de saber isso no primeiro request SSR) para nao sortear as
+// mesmas poucas perguntas do tema de novo.
+const vistos = (Astro.url.searchParams.get('vistos') ?? '')
+  .split(',')
+  .map(Number)
+  .filter(Number.isInteger);
+
+const rodada = await sortearRodada(env.DB, slug, undefined, vistos);
 const primeira = rodada[0];
 
 // A rodada inteira vai no HTML: uma leitura no banco, nenhuma ida de rede no
@@ -28,6 +36,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     ) : (
       <main
         class="jogo"
+        data-tema={slug}
         style={`--cor-jogo: ${tema.cor}; --cor-a: ${tema.coresCartoes[0]};`}
         data-cores={JSON.stringify(tema.coresCartoes)}
       >
@@ -132,6 +141,33 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
     const cores: string[] = JSON.parse(jogo.dataset.cores ?? '[]');
 
+    /**
+     * Ids ja mostrados neste tema, entre sessoes. Sem isso "jogar de novo"
+     * sorteava de novo entre as mesmas poucas perguntas do tema (a causa real
+     * de rodadas repetidas com pouco acervo) — mesmo padrao de Escolhas
+     * Impossiveis, so que por tema em vez de global.
+     */
+    const CHAVE_VISTOS = `joguinhos:quiz:${jogo.dataset.tema}:vistos`;
+
+    function lerVistos(): number[] {
+      try {
+        const bruto = localStorage.getItem(CHAVE_VISTOS);
+        const valor: unknown = bruto ? JSON.parse(bruto) : [];
+        return Array.isArray(valor) ? valor.filter((v) => Number.isInteger(v)) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    // Guarda ja na entrada: mesmo que a pessoa feche a aba no meio da rodada,
+    // as perguntas que ela chegou a ver nao voltam na proxima visita.
+    const vistos = [...new Set([...lerVistos(), ...rodada.map((p) => p.id)])].slice(-200);
+    try {
+      localStorage.setItem(CHAVE_VISTOS, JSON.stringify(vistos));
+    } catch {
+      /* sessao sem armazenamento: o jogo continua, so nao lembra */
+    }
+
     let indice = 0;
     let acertos = 0;
     let sequencia = 0;
@@ -139,7 +175,9 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
     mostrar();
 
-    el.deNovo.addEventListener('click', () => location.reload());
+    el.deNovo.addEventListener('click', () => {
+      location.href = `${location.pathname}?vistos=${vistos.join(',')}`;
+    });
 
     function atual(): Pergunta {
       return rodada[indice]!;

@@ -20,12 +20,17 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   title={`${tema.titulo} — joguinhos`}
   description={`Quiz rápido de 8 perguntas. Responda e veja como você se sai contra a média.`}
   bare
+  corFundo={tema.cor}
 >
   {
     !primeira ? (
       <p class="vazio">Este tema ainda não tem perguntas publicadas.</p>
     ) : (
-      <main class="jogo" style={`--cor-jogo: ${tema.cor};`}>
+      <main
+        class="jogo"
+        style={`--cor-jogo: ${tema.cor}; --cor-a: ${tema.coresCartoes[0]};`}
+        data-cores={JSON.stringify(tema.coresCartoes)}
+      >
         <header class="cabecalho">
           <a class="voltar" href="/">← joguinhos</a>
           <span class="sequencia" data-sequencia />
@@ -45,7 +50,11 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
           <div class="alternativas" data-alternativas>
             {primeira.alternativas.map((texto, indice) => (
-              <button class="alt" type="button">
+              <button
+                class="alt"
+                type="button"
+                style={`--cor: ${tema.coresCartoes[indice % tema.coresCartoes.length]};`}
+              >
                 <span class="letra">{String.fromCharCode(65 + indice)}</span>
                 <span class="texto-alt">{texto}</span>
               </button>
@@ -121,6 +130,8 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
       jogo.querySelector<HTMLElement>('[data-rodada]')?.textContent ?? '[]',
     );
 
+    const cores: string[] = JSON.parse(jogo.dataset.cores ?? '[]');
+
     let indice = 0;
     let acertos = 0;
     let sequencia = 0;
@@ -148,6 +159,9 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
           const botao = document.createElement('button');
           botao.type = 'button';
           botao.className = 'alt';
+          if (cores.length > 0) {
+            botao.style.setProperty('--cor', cores[posicao % cores.length]!);
+          }
 
           const letra = document.createElement('span');
           letra.className = 'letra';
@@ -267,7 +281,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
    */
   .vazio {
     padding: 4rem 0;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     text-align: center;
   }
 
@@ -281,14 +295,14 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .voltar {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none;
   }
 
   .sequencia {
-    color: var(--warn);
+    color: #fff;
     font-size: 0.85rem;
     font-weight: 800;
   }
@@ -300,7 +314,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .passo {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -311,18 +325,19 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     height: 4px;
     overflow: hidden;
     border-radius: 999px;
-    background: var(--surface-2);
+    background: rgba(255, 255, 255, 0.28);
   }
 
   .preenchido {
     width: 0;
     height: 100%;
-    background: var(--cor-jogo);
+    background: #fff;
     transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .enunciado {
     margin-bottom: 1.5rem;
+    color: #fff;
     font-size: clamp(1.35rem, 5.8vw, 1.7rem);
     font-weight: 800;
     line-height: 1.2;
@@ -335,7 +350,6 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .alt {
-    --cor: var(--cor-jogo);
     display: flex;
     align-items: center;
     gap: 0.85rem;
@@ -398,13 +412,14 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .veredito {
+    color: #fff;
     font-size: 1.1rem;
     font-weight: 800;
   }
 
   .explicacao {
     padding-top: 0.35rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.92rem;
     line-height: 1.45;
   }
@@ -415,8 +430,9 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     margin-top: 1.25rem;
     border: none;
     border-radius: var(--radius-sm);
-    background: linear-gradient(100deg, var(--a), var(--b));
-    color: var(--text);
+    background: var(--cor-a);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--cor-a) 80%, black 15%);
+    color: #fff;
     font-size: 1.05rem;
     font-weight: 800;
     cursor: pointer;
@@ -440,7 +456,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
   .comparacao {
     padding-top: 0.75rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 1rem;
     line-height: 1.45;
   }
@@ -448,7 +464,7 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   .mais {
     display: block;
     padding-top: 2rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.9rem;
     font-weight: 600;
     text-align: center;

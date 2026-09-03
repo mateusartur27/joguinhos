@@ -8,12 +8,15 @@
  * responder e ver o resultado e o que quebra o ritmo do jogo.
  */
 
+import { parseCartoes } from './jogos';
+
 export interface Tema {
   slug: string;
   titulo: string;
   emoji: string;
   dificuldade: string;
   cor: string;
+  coresCartoes: string[];
 }
 
 export interface Pergunta {
@@ -35,12 +38,19 @@ export const PERGUNTAS_POR_RODADA = 8;
 export async function buscarTema(db: D1Database, slug: string): Promise<Tema | null> {
   const linha = await db
     .prepare(
-      `SELECT slug, title, emoji, difficulty, color
+      `SELECT slug, title, emoji, difficulty, color, card_colors
          FROM quiz_topics
         WHERE slug = ? AND status = 'published'`,
     )
     .bind(slug)
-    .first<{ slug: string; title: string; emoji: string; difficulty: string; color: string }>();
+    .first<{
+      slug: string;
+      title: string;
+      emoji: string;
+      difficulty: string;
+      color: string;
+      card_colors: string;
+    }>();
 
   if (!linha) return null;
   return {
@@ -49,6 +59,7 @@ export async function buscarTema(db: D1Database, slug: string): Promise<Tema | n
     emoji: linha.emoji,
     dificuldade: linha.difficulty,
     cor: linha.color,
+    coresCartoes: parseCartoes(linha.card_colors),
   };
 }
 

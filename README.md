@@ -37,6 +37,13 @@ no `sort_order`, um ciclo por índice mudaria a cor de um jogo existente sem
 ninguém pedir isso. Guardado como hex direto na tabela — o motor de conteúdo
 (ou uma tela de admin futura) pode atribuir cor a um jogo novo sem deploy.
 
+`color` virou especificamente a cor de **fundo da página inteira** (via
+prop `corFundo` em `Base.astro`, que sobrescreve o `background` do `body`
+inline). Os cartões/botões por cima usam `card_colors` — outra coluna JSON,
+sempre com cores diferentes da de fundo, senão o cartão some contra a
+própria página. Curado à mão por jogo (não calculado automaticamente): a
+tarefa é "que fique bonito", que exige julgamento visual, não fórmula.
+
 ## Stack
 
 - **Astro 7** com `@astrojs/cloudflare`, `output: 'server'`

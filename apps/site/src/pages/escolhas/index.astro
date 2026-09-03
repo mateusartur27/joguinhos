@@ -2,14 +2,14 @@
 import { env } from 'cloudflare:workers';
 import Base from '../../layouts/Base.astro';
 import { sortearDilemas } from '../../lib/db/dilemas';
-import { buscarCorDoJogo } from '../../lib/db/jogos';
+import { buscarCoresDoJogo } from '../../lib/db/jogos';
 
 // Renderizado no servidor com o primeiro dilema ja no HTML. Quem chega de um
 // link do TikTok nao pode ver tela vazia esperando `fetch`: o primeiro toque
 // tem que estar disponivel no primeiro quadro pintado.
 const fila = await sortearDilemas(env.DB, { limite: 3 });
 const primeiro = fila[0];
-const cor = await buscarCorDoJogo(env.DB, 'escolhas');
+const cores = await buscarCoresDoJogo(env.DB, 'escolhas');
 
 // `<` vira escape unicode para que nenhum texto de dilema consiga fechar a tag
 // do script embutido. Vale menos pelo acervo escrito a mao e mais pelo que o
@@ -21,12 +21,13 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   title="Escolhas Impossíveis — joguinhos"
   description="Decida o indecidível e descubra na hora o que a maioria escolheu. Sem cadastro."
   bare
+  corFundo={cores.fundo}
 >
   {
     !primeiro ? (
       <p class="vazio">Sem dilemas publicados ainda. Volte em instantes.</p>
     ) : (
-      <main class="jogo" style={`--cor-jogo: ${cor};`}>
+      <main class="jogo" style={`--cor-a: ${cores.cartoes[0]}; --cor-b: ${cores.cartoes[1] ?? cores.cartoes[0]};`}>
         <header class="cabecalho">
           <a class="voltar" href="/">← joguinhos</a>
           <span class="placar" data-placar>0 escolhas</span>
@@ -310,7 +311,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
 <style>
   .vazio {
     padding: 4rem 0;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     text-align: center;
   }
 
@@ -323,7 +324,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   }
 
   .voltar {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none;
@@ -331,15 +332,15 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
 
   .placar {
     padding: 0.3rem 0.7rem;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 999px;
-    color: var(--muted);
+    color: #fff;
     font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
   }
 
   .categoria {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -348,6 +349,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
 
   .pergunta {
     margin: 0.4rem 0 1.5rem;
+    color: #fff;
     font-size: clamp(1.6rem, 7vw, 2.1rem);
     font-weight: 800;
     line-height: 1.1;
@@ -361,7 +363,6 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   }
 
   .op {
-    --cor: var(--cor-jogo);
     position: relative;
     display: flex;
     align-items: center;
@@ -379,6 +380,14 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
     transition:
       transform 0.12s ease,
       box-shadow 0.2s ease;
+  }
+
+  .op[data-op='a'] {
+    --cor: var(--cor-a);
+  }
+
+  .op[data-op='b'] {
+    --cor: var(--cor-b);
   }
 
   .op:active:not(:disabled) {
@@ -452,6 +461,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   }
 
   .veredito {
+    color: #fff;
     font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: -0.01em;
@@ -459,7 +469,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
 
   .votos {
     padding-top: 0.3rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.9rem;
     font-variant-numeric: tabular-nums;
   }
@@ -467,7 +477,7 @@ const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
   .mais {
     display: block;
     padding-top: 2.5rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.9rem;
     font-weight: 600;
     text-align: center;

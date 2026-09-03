@@ -22,8 +22,9 @@ const medalhas = ['🥇', '🥈', '🥉'];
 <Base
   title={`${lista.titulo}: o ranking do público — joguinhos`}
   description={`${lista.pergunta} Veja o ranking montado por ${numero.format(totalDuelos)} duelos do público.`}
+  corFundo={lista.cor}
 >
-  <main style={`--cor-jogo: ${lista.cor};`}>
+  <main style={`--cor-jogo: ${lista.cor}; --cor-a: ${lista.coresCartoes[0]};`}>
     <p class="categoria">{lista.emoji} ranking coletivo</p>
     <h1>{lista.pergunta}</h1>
     <p class="sub">
@@ -67,7 +68,7 @@ const medalhas = ['🥇', '🥈', '🥉'];
 
 <style>
   .categoria {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -76,6 +77,7 @@ const medalhas = ['🥇', '🥈', '🥉'];
 
   h1 {
     margin: 0.4rem 0 0.5rem;
+    color: #fff;
     font-size: clamp(1.5rem, 6.5vw, 2rem);
     font-weight: 800;
     line-height: 1.1;
@@ -83,7 +85,7 @@ const medalhas = ['🥇', '🥈', '🥉'];
   }
 
   .sub {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.92rem;
   }
 
@@ -102,13 +104,13 @@ const medalhas = ['🥇', '🥈', '🥉'];
     align-items: center;
     gap: 0.7rem;
     padding: 0.8rem 0.9rem;
-    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--surface);
+    box-shadow: 0 0.3rem 0.8rem -0.55rem rgba(0, 0, 0, 0.4);
   }
 
   .linha.podio {
-    border-color: color-mix(in srgb, var(--cor-jogo) 55%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--cor-jogo) 55%, var(--border));
     background: color-mix(in srgb, var(--cor-jogo) 20%, var(--surface));
   }
 
@@ -146,7 +148,7 @@ const medalhas = ['🥇', '🥈', '🥉'];
 
   .nota {
     padding-bottom: 1.5rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.8rem;
     line-height: 1.45;
   }
@@ -156,8 +158,8 @@ const medalhas = ['🥇', '🥈', '🥉'];
     min-height: var(--tap);
     padding: 1rem;
     border-radius: var(--radius-sm);
-    background: var(--cor-jogo);
-    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--cor-jogo) 80%, black 15%);
+    background: var(--cor-a);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--cor-a) 80%, black 15%);
     color: #fff;
     font-size: 1.02rem;
     font-weight: 800;
@@ -168,7 +170,7 @@ const medalhas = ['🥇', '🥈', '🥉'];
   .mais {
     display: block;
     padding-top: 2rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.9rem;
     font-weight: 600;
     text-align: center;

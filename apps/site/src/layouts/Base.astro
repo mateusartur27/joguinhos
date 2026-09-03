@@ -6,9 +6,16 @@ interface Props {
   description: string;
   /** Some o cabecalho nas paginas de jogo: quem chega do TikTok entra jogando. */
   bare?: boolean;
+  /**
+   * Cor solida do jogo, quando a pagina inteira e um jogo so (nao a home).
+   * Sobrescreve o brilho multicor padrao do body via `style` inline — vence
+   * a folha de estilo global sem precisar de `!important` nem duplicar a
+   * regra em cada pagina de jogo.
+   */
+  corFundo?: string;
 }
 
-const { title, description, bare = false } = Astro.props;
+const { title, description, bare = false, corFundo } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
 
 // Vazio ate a aprovacao do AdSense (que exige dominio proprio). Sem isso
@@ -24,7 +31,7 @@ const adsense = import.meta.env.PUBLIC_ADSENSE_CLIENT;
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <meta name="theme-color" content="#faf9ff" />
+    <meta name="theme-color" content={corFundo ?? '#faf9ff'} />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="joguinhos" />
@@ -43,7 +50,7 @@ const adsense = import.meta.env.PUBLIC_ADSENSE_CLIENT;
       )
     }
   </head>
-  <body>
+  <body style={corFundo ? `background: ${corFundo};` : undefined}>
     <div class="wrap">
       {
         !bare && (

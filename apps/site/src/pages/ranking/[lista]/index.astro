@@ -16,12 +16,17 @@ const duelo = await sortearDuelo(env.DB, slug);
   title={`${lista.titulo} — joguinhos`}
   description={`${lista.pergunta} Escolha entre dois e ajude a montar o ranking do público.`}
   bare
+  corFundo={lista.cor}
 >
   {
     !duelo ? (
       <p class="vazio">Esta lista ainda não tem competidores suficientes.</p>
     ) : (
-      <main class="jogo" data-lista={slug} style={`--cor-jogo: ${lista.cor};`}>
+      <main
+        class="jogo"
+        data-lista={slug}
+        style={`--cor-a: ${lista.coresCartoes[0]}; --cor-b: ${lista.coresCartoes[1] ?? lista.coresCartoes[0]}; --cor-jogo: ${lista.cor};`}
+      >
         <header class="cabecalho">
           <a class="voltar" href="/">← joguinhos</a>
           <span class="placar" data-placar>
@@ -251,7 +256,7 @@ const duelo = await sortearDuelo(env.DB, slug);
 <style>
   .vazio {
     padding: 4rem 0;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     text-align: center;
   }
 
@@ -264,7 +269,7 @@ const duelo = await sortearDuelo(env.DB, slug);
   }
 
   .voltar {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none;
@@ -272,15 +277,15 @@ const duelo = await sortearDuelo(env.DB, slug);
 
   .placar {
     padding: 0.3rem 0.7rem;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 999px;
-    color: var(--muted);
+    color: #fff;
     font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
   }
 
   .categoria {
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -289,6 +294,7 @@ const duelo = await sortearDuelo(env.DB, slug);
 
   .pergunta {
     margin: 0.4rem 0 1.5rem;
+    color: #fff;
     font-size: clamp(1.6rem, 7vw, 2.1rem);
     font-weight: 800;
     line-height: 1.1;
@@ -302,7 +308,6 @@ const duelo = await sortearDuelo(env.DB, slug);
   }
 
   .op {
-    --cor: var(--cor-jogo);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -318,6 +323,14 @@ const duelo = await sortearDuelo(env.DB, slug);
     transition:
       transform 0.12s ease,
       box-shadow 0.2s ease;
+  }
+
+  .op[data-op='a'] {
+    --cor: var(--cor-a);
+  }
+
+  .op[data-op='b'] {
+    --cor: var(--cor-b);
   }
 
   .op:active:not(:disabled) {
@@ -373,7 +386,7 @@ const duelo = await sortearDuelo(env.DB, slug);
   .reveal {
     min-height: 2.75rem;
     padding-top: 1rem;
-    color: var(--cor-jogo);
+    color: #fff;
     font-size: 0.92rem;
     font-weight: 600;
     line-height: 1.35;
@@ -384,9 +397,9 @@ const duelo = await sortearDuelo(env.DB, slug);
     display: block;
     min-height: var(--tap);
     padding: 1rem;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: var(--radius-sm);
-    color: var(--text);
+    color: #fff;
     font-weight: 700;
     text-align: center;
     text-decoration: none;
@@ -395,7 +408,7 @@ const duelo = await sortearDuelo(env.DB, slug);
   .mais {
     display: block;
     padding-top: 2rem;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.9rem;
     font-weight: 600;
     text-align: center;

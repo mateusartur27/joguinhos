@@ -2,6 +2,7 @@
  * Acesso ao D1 do Ranking Coletivo.
  */
 
+import { parseCartoes } from './jogos';
 import { aplicarDuelo } from '../ranking/elo';
 
 export interface Lista {
@@ -10,6 +11,7 @@ export interface Lista {
   pergunta: string;
   emoji: string;
   cor: string;
+  coresCartoes: string[];
 }
 
 export interface Competidor {
@@ -54,12 +56,19 @@ export const DUELOS_MINIMOS_PARA_TAXA = 10;
 export async function buscarLista(db: D1Database, slug: string): Promise<Lista | null> {
   const linha = await db
     .prepare(
-      `SELECT slug, title, question, emoji, color
+      `SELECT slug, title, question, emoji, color, card_colors
          FROM ranking_lists
         WHERE slug = ? AND status = 'published'`,
     )
     .bind(slug)
-    .first<{ slug: string; title: string; question: string; emoji: string; color: string }>();
+    .first<{
+      slug: string;
+      title: string;
+      question: string;
+      emoji: string;
+      color: string;
+      card_colors: string;
+    }>();
 
   if (!linha) return null;
   return {
@@ -68,6 +77,7 @@ export async function buscarLista(db: D1Database, slug: string): Promise<Lista |
     pergunta: linha.question,
     emoji: linha.emoji,
     cor: linha.color,
+    coresCartoes: parseCartoes(linha.card_colors),
   };
 }
 

@@ -62,7 +62,18 @@ factual no quiz e violação de política no dilema.
 
 Isso não é precaução teórica — no primeiro lote real, 2 de 8 dilemas não
 prestavam e 1 de 5 perguntas trazia uma alternativa em espanhol
-("Jogo peligroso"). Os outros 10 foram publicados.
+("Jogo peligroso"). Um lote seguinte trouxe uma pergunta afirmando que Kratos
+é "conhecido como o Bom de Guerra" — apelido que não existe (o real é
+"Fantasma de Esparta"). Padrão claro: o risco concentra no quiz (fato
+verificável), não no dilema (opinião não tem como estar "errada").
+
+A instrução do quiz agora pede fatos objetivos (nome, data, quantidade,
+mecânica) e evita de propósito apelido, epíteto ou frase atribuída — é
+exatamente o tipo de "fato" que o modelo inventa com confiança. O gerador já
+tem suporte pronto para busca do Google como reforço (`GEMINI_GROUNDING_ENABLED`
+em `apps/content-engine/wrangler.jsonc`), mas ligar isso quebra a geração
+inteira com 429 até a conta Google ter faturamento habilitado — mesmo
+obstáculo já visto na geração de música. Fica `false` até isso existir.
 
 Toda chamada ao Gemini passa pelo `createRateLimitedFetch` com reserva em D1,
 portado do `gerador-de-video`: o escopo da proteção precisa ser a conta

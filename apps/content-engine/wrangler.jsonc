@@ -29,7 +29,10 @@
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
     // Teto conservador: a cota real depende do plano da conta, e estourar
     // custa 429 no meio da geracao.
-    "GEMINI_CALLS_PER_MINUTE": "10"
+    "GEMINI_CALLS_PER_MINUTE": "10",
+    // "true" so depois que a conta Google tiver faturamento habilitado -
+    // ver o comentario em src/geradores/quiz.ts.
+    "GEMINI_GROUNDING_ENABLED": "false"
   },
 
   "observability": {

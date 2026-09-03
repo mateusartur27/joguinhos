@@ -4,7 +4,20 @@ import type { ResultadoGeracao } from './dilemas';
 /** Enunciados ja existentes do tema que vao no prompt como "nao repita". */
 const AMOSTRA_ANTI_REPETICAO = 40;
 
-const INSTRUCAO = `Você escreve perguntas de quiz para um site brasileiro de microjogos.
+/**
+ * Monta a instrucao com base em se a busca do Google esta disponivel nesta
+ * chamada.
+ *
+ * A busca (`fundamentado: true` em `Gemini.gerar`) exige faturamento
+ * habilitado na conta Google — sem isso a chamada falha com 429 mesmo dentro
+ * da cota gratuita nominal (o mesmo obstaculo ja visto na geracao de musica
+ * deste projeto). Ate o faturamento existir, `comBusca` fica falso: a
+ * instrucao entao NAO afirma que ha busca disponivel, porque dizer isso ao
+ * modelo sem a ferramenta de fato ligada e pior que nao dizer nada — ele
+ * passaria a citar uma "pesquisa" que nunca aconteceu.
+ */
+function instrucao(comBusca: boolean): string {
+  return `Você escreve perguntas de quiz para um site brasileiro de microjogos.
 
 Regras:
 - Português do Brasil, enunciado curto e direto.
@@ -13,11 +26,17 @@ Regras:
   absurda estraga a pergunta.
 - Use apenas fatos estáveis e verificáveis. Nada que dependa do ano corrente,
   de recordes que mudam, de rankings de temporada ou de dados recentes.
-- Se você não tem certeza absoluta da resposta, não escreva a pergunta.
+- Evite apelidos, epítetos, frases atribuídas a alguém ou qualquer "curiosidade"
+  de trivia — é exatamente o tipo de fato que um modelo inventa com confiança
+  sem perceber, mesmo quando soa familiar. Prefira o que é checável de forma
+  objetiva: nome, data, quantidade, definição, mecânica de jogo, resultado de
+  evento específico.
+${comBusca ? '- Você tem busca do Google disponível. Use-a para confirmar cada fato antes de escrever a pergunta — não responda de memória.\n' : ''}- Se você não tem certeza absoluta da resposta, não escreva a pergunta.
 - Explicação de no máximo uma frase.
 - Nada de conteúdo sexual, violência gráfica, drogas, política partidária,
   religião ou ofensa a pessoas reais.
 - Não repita nem parafraseie perguntas que já existem.`;
+}
 
 const SCHEMA = {
   type: 'object',
@@ -56,6 +75,7 @@ export async function gerarPerguntas(
   gemini: Gemini,
   temaSlug: string,
   quantidade: number,
+  comBusca: boolean,
 ): Promise<ResultadoGeracao> {
   const tema = await db
     .prepare('SELECT slug, title FROM quiz_topics WHERE slug = ?')
@@ -72,12 +92,13 @@ export async function gerarPerguntas(
   const jaExistem = existentes.map((p) => `- ${p.prompt}`).join('\n');
 
   const resposta = await gemini.gerar<{ perguntas: PerguntaGerada[] }>({
-    instrucaoDeSistema: INSTRUCAO,
+    instrucaoDeSistema: instrucao(comBusca),
     entrada:
       `Tema: "${tema.title}" (identificador: ${tema.slug}).\n` +
       `Gere ${quantidade} perguntas novas sobre esse tema.\n\n` +
       `Perguntas que já existem (não repita nem reformule):\n${jaExistem}`,
     schema: SCHEMA,
+    fundamentado: comBusca,
   });
 
   const candidatos = Array.isArray(resposta.perguntas) ? resposta.perguntas : [];

@@ -9,6 +9,13 @@ interface Ambiente {
   GEMINI_API_KEY: string;
   GEMINI_MODEL: string;
   GEMINI_CALLS_PER_MINUTE: string;
+  /**
+   * "true" liga busca do Google nas perguntas de quiz. Exige faturamento
+   * habilitado na conta Google (ver comentario em geradores/quiz.ts) — fica
+   * "false" ate isso existir, senao a chamada falha com 429 e nenhuma
+   * pergunta e gerada, o que e pior que gerar sem busca.
+   */
+  GEMINI_GROUNDING_ENABLED: string;
   ADMIN_TOKEN: string;
 }
 
@@ -48,11 +55,12 @@ async function executar(env: Ambiente): Promise<Relatorio> {
 
   const dilemas = await gerarDilemas(env.DB, gemini, DILEMAS_POR_EXECUCAO);
 
+  const comBusca = env.GEMINI_GROUNDING_ENABLED === 'true';
   const tema = await temaDoDia(env.DB);
   const quiz = tema
     ? {
         tema,
-        ...(await gerarPerguntas(env.DB, gemini, tema, PERGUNTAS_POR_EXECUCAO)),
+        ...(await gerarPerguntas(env.DB, gemini, tema, PERGUNTAS_POR_EXECUCAO, comBusca)),
       }
     : null;
 

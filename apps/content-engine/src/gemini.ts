@@ -27,6 +27,17 @@ export interface PedidoEstruturado {
   instrucaoDeSistema: string;
   entrada: string;
   schema: unknown;
+  /**
+   * Liga busca do Google como ferramenta do modelo, nos moldes do
+   * `groundingEnabled` de gerador-de-video/production-planner/gemini-interactions.ts.
+   *
+   * Existe porque um modelo pequeno (flash-lite) inventa fato com confianca —
+   * o caso real foi um "apelido" de personagem de jogo que nao existe. Sem
+   * busca, "nao tenho certeza absoluta" no prompt e so um pedido; com busca, o
+   * modelo tem como checar antes de responder. Usar so onde a resposta e
+   * verificavel (quiz), nunca em conteudo de opiniao (dilema).
+   */
+  fundamentado?: boolean;
 }
 
 /**
@@ -79,6 +90,7 @@ export class Gemini {
           mime_type: 'application/json',
           schema: pedido.schema,
         },
+        ...(pedido.fundamentado ? { tools: [{ type: 'google_search' }] } : {}),
       }),
     });
 

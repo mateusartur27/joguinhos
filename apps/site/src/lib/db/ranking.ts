@@ -31,6 +31,8 @@ export interface PosicaoRanking {
 
 export interface ResultadoDuelo {
   vencedor: PosicaoRanking & { posicao: number };
+  /** Taxa do perdedor tambem volta, para a tela comparar os dois lados. */
+  perdedor: PosicaoRanking;
   totalDuelos: number;
 }
 
@@ -172,6 +174,13 @@ export async function registrarDuelo(
       duelos: vencedor.matches + 1,
       vitorias: vencedor.wins + 1,
       posicao: posicao?.posicao ?? 1,
+    },
+    perdedor: {
+      id: perdedorId,
+      rotulo: perdedor.label,
+      rating: novos.perdedor,
+      duelos: perdedor.matches + 1,
+      vitorias: perdedor.wins,
     },
     // Cada duelo conta em dois competidores; a metade e o numero de disputas.
     totalDuelos: Math.floor((total?.duelos ?? 0) / 2),

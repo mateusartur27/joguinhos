@@ -1,30 +1,31 @@
 /*
  * Tokens e base do joguinhos.
  *
- * Tema escuro unico e deliberado: o produto e feito para ser aberto de noite,
- * no celular, vindo de um video — nao ha caso de uso de leitura longa que
- * justifique um tema claro, e manter um so tema mantem o CSS pequeno. Escuro
- * nao e sinonimo de sem-graca: o brilho de fundo usa as tres cores de acento
- * (rosa/roxo/ciano) em vez de um unico tom, e essas mesmas cores tingem os
- * cartoes e botoes em repouso, nao so quando revelam resultado.
+ * Tema claro unico, de proposito: manter um so tema mantem o CSS pequeno.
+ * Claro nao e sinonimo de sem-graca: o brilho de fundo usa as tres cores de
+ * acento (rosa/roxo/ciano) como manchas suaves sobre o branco, e essas mesmas
+ * cores tingem os cartoes e botoes em repouso, nao so quando revelam
+ * resultado. Os tres acentos sao versoes fechadas (nao pastel) de proposito —
+ * sao usados como cor de texto em alguns pontos (`.pct`, `.reveal`), e
+ * precisam de contraste real contra fundo branco, nao so contra o escuro.
  *
  * Nenhuma webfont: a pessoa chega de link do TikTok em 4G e o primeiro
  * conteudo nao pode esperar download de fonte.
  */
 
 :root {
-  --bg: #0a0714;
-  --surface: #18122a;
-  --surface-2: #241a3d;
-  --border: #3c2f5c;
+  --bg: #faf9ff;
+  --surface: #ffffff;
+  --surface-2: #f1eefa;
+  --border: #e3dff0;
 
-  --text: #f6f4ff;
-  --muted: #ab9fd4;
+  --text: #1c1730;
+  --muted: #6b6480;
 
-  --a: #ff3d81; /* rosa */
-  --b: #7c4dff; /* roxo */
-  --c: #00e0b8; /* ciano */
-  --warn: #ffb020;
+  --a: #db2777; /* rosa */
+  --b: #6d28d9; /* roxo */
+  --c: #0f766e; /* ciano */
+  --warn: #b45309;
 
   --radius: 18px;
   --radius-sm: 12px;
@@ -33,7 +34,7 @@
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -58,9 +59,9 @@ body {
   font-family: var(--font);
   color: var(--text);
   background:
-    radial-gradient(50rem 38rem at 8% -8%, color-mix(in srgb, var(--a) 40%, transparent), transparent 60%),
-    radial-gradient(46rem 38rem at 105% 6%, color-mix(in srgb, var(--c) 32%, transparent), transparent 58%),
-    radial-gradient(62rem 52rem at 45% 108%, color-mix(in srgb, var(--b) 36%, transparent), transparent 62%),
+    radial-gradient(50rem 38rem at 8% -8%, color-mix(in srgb, var(--a) 16%, transparent), transparent 60%),
+    radial-gradient(46rem 38rem at 105% 6%, color-mix(in srgb, var(--c) 14%, transparent), transparent 58%),
+    radial-gradient(62rem 52rem at 45% 108%, color-mix(in srgb, var(--b) 16%, transparent), transparent 62%),
     var(--bg);
   -webkit-font-smoothing: antialiased;
   /* Impede o "puxar para atualizar" atrapalhar quem toca rapido nos botoes. */

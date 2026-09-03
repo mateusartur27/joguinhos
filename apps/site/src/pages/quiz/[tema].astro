@@ -44,9 +44,10 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
           </h1>
 
           <div class="alternativas" data-alternativas>
-            {primeira.alternativas.map((texto) => (
+            {primeira.alternativas.map((texto, indice) => (
               <button class="alt" type="button">
-                {texto}
+                <span class="letra">{String.fromCharCode(65 + indice)}</span>
+                <span class="texto-alt">{texto}</span>
               </button>
             ))}
           </div>
@@ -154,7 +155,17 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
           const botao = document.createElement('button');
           botao.type = 'button';
           botao.className = 'alt';
-          botao.textContent = texto;
+
+          const letra = document.createElement('span');
+          letra.className = 'letra';
+          letra.textContent = String.fromCharCode(65 + posicao);
+
+          const textoAlt = document.createElement('span');
+          textoAlt.className = 'texto-alt';
+          textoAlt.textContent = texto;
+
+          botao.appendChild(letra);
+          botao.appendChild(textoAlt);
           botao.addEventListener('click', () => responder(posicao));
           return botao;
         }),
@@ -171,8 +182,14 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
       botoes.forEach((botao, i) => {
         botao.disabled = true;
-        if (i === pergunta.correta) botao.classList.add('certa');
-        else if (i === posicao) botao.classList.add('errada');
+        const letra = botao.querySelector('.letra')!;
+        if (i === pergunta.correta) {
+          botao.classList.add('certa');
+          letra.textContent = '✓';
+        } else if (i === posicao) {
+          botao.classList.add('errada');
+          letra.textContent = '✕';
+        }
       });
 
       if (acertou) {
@@ -242,7 +259,14 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 </script>
 
-<style>
+<style is:global>
+  /*
+   * Global de proposito: as alternativas sao sempre recriadas via
+   * `document.createElement` em `mostrar()` (mesmo a primeira pergunta), e
+   * elemento criado por JS nao ganha o atributo de escopo do Astro — CSS
+   * com escopo nunca bateria nelas. Seguro aqui porque a pagina e MPA (sem
+   * client-router): o CSS de uma pagina nunca coexiste com o de outra no DOM.
+   */
   .vazio {
     padding: 4rem 0;
     color: var(--muted);
@@ -314,9 +338,12 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
 
   .alt {
     --cor: var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
     min-height: var(--tap);
-    padding: 1rem 1.1rem;
-    border: 1px solid color-mix(in srgb, var(--cor) 30%, var(--border));
+    padding: 0.85rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--cor) 40%, var(--border));
     border-radius: var(--radius-sm);
     background: linear-gradient(155deg, color-mix(in srgb, var(--cor) 12%, var(--surface)), var(--surface));
     font-size: 1.02rem;
@@ -326,11 +353,34 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
     transition:
       transform 0.12s ease,
       border-color 0.2s ease,
-      background 0.2s ease;
+      background 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .alt:active:not(:disabled) {
     transform: scale(0.99);
+  }
+
+  .alt:not(:disabled):hover {
+    border-color: var(--cor);
+    box-shadow: 0 0.4rem 1rem -0.5rem var(--cor);
+  }
+
+  .letra {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 999px;
+    background: var(--cor);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .texto-alt {
+    flex: 1;
   }
 
   .alt:nth-child(3n + 1) {
@@ -350,13 +400,15 @@ const rodadaJson = JSON.stringify(rodada).replaceAll('<', '\\u003c');
   }
 
   .alt.certa {
-    border-color: var(--c);
-    background: color-mix(in srgb, var(--c) 18%, var(--surface));
+    --cor: var(--c);
+    border-color: var(--cor);
+    background: color-mix(in srgb, var(--cor) 18%, var(--surface));
   }
 
   .alt.errada {
-    border-color: var(--a);
-    background: color-mix(in srgb, var(--a) 18%, var(--surface));
+    --cor: var(--a);
+    border-color: var(--cor);
+    background: color-mix(in srgb, var(--cor) 18%, var(--surface));
   }
 
   .depois {

@@ -37,6 +37,7 @@ const duelo = await sortearDuelo(env.DB, slug);
             <span class="rotulo" data-texto="a">
               {duelo.a.rotulo}
             </span>
+            <span class="pct" data-pct="a" />
           </button>
 
           <div class="vs">VS</div>
@@ -45,6 +46,7 @@ const duelo = await sortearDuelo(env.DB, slug);
             <span class="rotulo" data-texto="b">
               {duelo.b.rotulo}
             </span>
+            <span class="pct" data-pct="b" />
           </button>
         </div>
 
@@ -70,13 +72,15 @@ const duelo = await sortearDuelo(env.DB, slug);
     b: Competidor;
   }
 
+  interface Taxa {
+    rotulo: string;
+    duelos: number;
+    vitorias: number;
+  }
+
   interface Resultado {
-    vencedor: {
-      rotulo: string;
-      posicao: number;
-      duelos: number;
-      vitorias: number;
-    };
+    vencedor: Taxa & { posicao: number };
+    perdedor: Taxa;
     totalDuelos: number;
   }
 
@@ -103,6 +107,10 @@ const duelo = await sortearDuelo(env.DB, slug);
       texto: {
         a: jogo.querySelector<HTMLElement>('[data-texto="a"]')!,
         b: jogo.querySelector<HTMLElement>('[data-texto="b"]')!,
+      },
+      pct: {
+        a: jogo.querySelector<HTMLElement>('[data-pct="a"]')!,
+        b: jogo.querySelector<HTMLElement>('[data-pct="b"]')!,
       },
     };
 
@@ -167,7 +175,7 @@ const duelo = await sortearDuelo(env.DB, slug);
           body: JSON.stringify({ vencedorId, perdedorId }),
         });
         if (!resposta.ok) throw new Error(String(resposta.status));
-        mostrarReveal((await resposta.json()) as Resultado);
+        mostrarReveal((await resposta.json()) as Resultado, lado);
       } catch {
         el.reveal.textContent = 'Não deu para contar esse duelo agora.';
       }
@@ -176,9 +184,19 @@ const duelo = await sortearDuelo(env.DB, slug);
       setTimeout(avancar, PAUSA_DO_REVEAL);
     }
 
-    function mostrarReveal(resultado: Resultado) {
-      const { rotulo, posicao, duelos, vitorias } = resultado.vencedor;
+    /**
+     * Cada lado mostra sua propria taxa de vitoria (nao so a do vencedor), o
+     * mesmo formato visual de Escolhas Impossiveis — a pessoa ve o placar dos
+     * dois, nao so um resumo em frase.
+     */
+    function mostrarReveal(resultado: Resultado, ladoEscolhido: 'a' | 'b') {
+      const ladoPerdedor = ladoEscolhido === 'a' ? 'b' : 'a';
+      aplicarTaxa(ladoEscolhido, resultado.vencedor);
+      aplicarTaxa(ladoPerdedor, resultado.perdedor);
+      el.opcoes.a.classList.add('revelada');
+      el.opcoes.b.classList.add('revelada');
 
+      const { rotulo, posicao, duelos, vitorias } = resultado.vencedor;
       if (duelos < DUELOS_MINIMOS_PARA_TAXA) {
         el.reveal.textContent = `Você ajudou a colocar ${rotulo} no ranking.`;
         return;
@@ -188,6 +206,14 @@ const duelo = await sortearDuelo(env.DB, slug);
       el.reveal.textContent =
         `${rotulo} está em #${posicao} · vence ${taxa}% dos duelos ` +
         `· ${numero.format(resultado.totalDuelos)} duelos na lista`;
+    }
+
+    function aplicarTaxa(lado: 'a' | 'b', dados: Taxa) {
+      if (dados.duelos < DUELOS_MINIMOS_PARA_TAXA) {
+        el.pct[lado].textContent = '';
+        return;
+      }
+      el.pct[lado].textContent = `${Math.round((dados.vitorias / dados.duelos) * 100)}%`;
     }
 
     function avancar() {
@@ -207,8 +233,9 @@ const duelo = await sortearDuelo(env.DB, slug);
       el.texto.b.textContent = duelo.b.rotulo;
 
       for (const lado of ['a', 'b'] as const) {
-        el.opcoes[lado].classList.remove('escolhida');
+        el.opcoes[lado].classList.remove('escolhida', 'revelada');
         el.opcoes[lado].disabled = false;
+        el.pct[lado].textContent = '';
       }
 
       julgando = false;
@@ -275,8 +302,11 @@ const duelo = await sortearDuelo(env.DB, slug);
   }
 
   .op {
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     min-height: 8rem;
     padding: 1.25rem;
     border: 1px solid color-mix(in srgb, var(--cor) 38%, var(--border));
@@ -312,6 +342,20 @@ const duelo = await sortearDuelo(env.DB, slug);
     line-height: 1.15;
     letter-spacing: -0.02em;
     text-align: center;
+  }
+
+  .pct {
+    height: 1.5rem;
+    color: var(--cor);
+    font-size: 1.3rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.15s;
+  }
+
+  .op.revelada .pct {
+    opacity: 1;
   }
 
   .vs {

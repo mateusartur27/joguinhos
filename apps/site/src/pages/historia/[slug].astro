@@ -1,0 +1,284 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../layouts/Base.astro';
+import { buscarHistoria } from '../../lib/db/historias';
+
+const slug = Astro.params.slug!;
+const historia = await buscarHistoria(env.DB, slug);
+if (!historia) return new Response('História não encontrada', { status: 404 });
+
+// A arvore inteira vai no HTML — e uma historia curta, cabe facil, e evita
+// ida de rede a cada escolha (so o final chama a API, para registrar).
+const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
+---
+
+<Base
+  title={`${historia.titulo} — joguinhos`}
+  description={`Uma história interativa de ${historia.categoria}. Suas escolhas decidem o final.`}
+  bare
+  corFundo={historia.cor}
+>
+  <main
+    class="jogo"
+    data-slug={historia.slug}
+    style={`--cor-a: ${historia.coresCartoes[0]}; --cor-b: ${historia.coresCartoes[1] ?? historia.coresCartoes[0]};`}
+  >
+    <header class="cabecalho">
+      <a class="voltar" href="/">← joguinhos</a>
+      <span class="passo" data-passo />
+    </header>
+
+    <p class="categoria">{historia.categoria}</p>
+    <h1 class="titulo">{historia.titulo}</h1>
+
+    <p class="cena" data-cena />
+
+    <div class="opcoes" data-opcoes></div>
+
+    <div class="final" data-final hidden>
+      <p class="percentual" data-percentual />
+      <div class="botoes-final">
+        <button class="de-novo" data-de-novo type="button">🔁 Jogar de novo</button>
+        <a class="mais" href="/">🎮 Ver mais jogos</a>
+      </div>
+    </div>
+
+    <script is:inline type="application/json" data-historia set:html={historiaJson} />
+  </main>
+</Base>
+
+<script>
+  interface OpcaoNo {
+    rotulo: string;
+    proximoId: number;
+  }
+
+  interface NoHistoria {
+    id: number;
+    texto: string;
+    ehFinal: boolean;
+    opcaoA: OpcaoNo | null;
+    opcaoB: OpcaoNo | null;
+  }
+
+  interface Historia {
+    slug: string;
+    titulo: string;
+    raizId: number;
+    nos: NoHistoria[];
+  }
+
+  /** Profundidade fixa de toda historia (raiz + 2 escolhas ate o final). */
+  const PROFUNDIDADE_TOTAL = 3;
+
+  const jogo = document.querySelector<HTMLElement>('.jogo');
+  if (jogo) iniciar(jogo);
+
+  function iniciar(jogo: HTMLElement) {
+    const historia: Historia = JSON.parse(
+      jogo.querySelector<HTMLElement>('[data-historia]')?.textContent ?? '{}',
+    );
+    const porId = new Map(historia.nos.map((no) => [no.id, no]));
+
+    const el = {
+      passo: jogo.querySelector<HTMLElement>('[data-passo]')!,
+      cena: jogo.querySelector<HTMLElement>('[data-cena]')!,
+      opcoes: jogo.querySelector<HTMLElement>('[data-opcoes]')!,
+      final: jogo.querySelector<HTMLElement>('[data-final]')!,
+      percentual: jogo.querySelector<HTMLElement>('[data-percentual]')!,
+      deNovo: jogo.querySelector<HTMLButtonElement>('[data-de-novo]')!,
+    };
+
+    let cenaAtual = 1;
+
+    el.deNovo.addEventListener('click', () => mostrar(historia.raizId, 1));
+
+    mostrar(historia.raizId, 1);
+
+    function mostrar(noId: number, cena: number) {
+      const no = porId.get(noId);
+      if (!no) return;
+
+      cenaAtual = cena;
+      el.passo.textContent = no.ehFinal ? 'Final' : `Cena ${cena} de ${PROFUNDIDADE_TOTAL}`;
+      el.cena.textContent = no.texto;
+      jogo.scrollIntoView({ block: 'start', behavior: 'smooth' });
+
+      if (no.ehFinal) {
+        el.opcoes.hidden = true;
+        el.opcoes.replaceChildren();
+        registrarFinal(no.id);
+        return;
+      }
+
+      el.final.hidden = true;
+      el.opcoes.hidden = false;
+      el.opcoes.replaceChildren(
+        ...[no.opcaoA, no.opcaoB]
+          .filter((opcao): opcao is OpcaoNo => opcao !== null)
+          .map((opcao, indice) => {
+            const botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'opcao';
+            botao.style.setProperty('--cor', indice === 0 ? 'var(--cor-a)' : 'var(--cor-b)');
+            botao.textContent = opcao.rotulo;
+            botao.addEventListener('click', () => mostrar(opcao.proximoId, cenaAtual + 1));
+            return botao;
+          }),
+      );
+    }
+
+    async function registrarFinal(nodeId: number) {
+      el.percentual.textContent = '';
+      el.final.hidden = false;
+
+      try {
+        const resposta = await fetch(`/api/historia/${historia.slug}/final`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ nodeId }),
+        });
+        if (!resposta.ok) return;
+        const dados = (await resposta.json()) as { percentual: number | null };
+        el.percentual.textContent =
+          dados.percentual === null
+            ? 'Você é um dos primeiros a chegar nesse final. 🌱'
+            : `${dados.percentual}% dos jogadores chegaram nesse final.`;
+      } catch {
+        /* sem rede: o final ja foi mostrado, so o percentual fica de fora */
+      }
+    }
+  }
+</script>
+
+<style is:global>
+  /* Global pelo mesmo motivo do Quiz/Adivinhe: os botoes de escolha sao
+     recriados via `document.createElement` a cada cena. Seguro aqui porque
+     a pagina e MPA. */
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .voltar {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .passo {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .categoria {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .titulo {
+    margin: 0.4rem 0 1.5rem;
+    color: #fff;
+    font-size: clamp(1.5rem, 6.5vw, 2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .cena {
+    margin-bottom: 1.5rem;
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.55;
+    animation: subir 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .opcoes {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .opcao {
+    min-height: var(--tap);
+    padding: 1rem 1.2rem;
+    border: 1px solid color-mix(in srgb, var(--cor) 85%, black 12%);
+    border-radius: var(--radius-sm);
+    background: var(--cor);
+    box-shadow: 0 0.5rem 1.1rem -0.7rem color-mix(in srgb, var(--cor) 80%, black 15%);
+    color: #fff;
+    font-size: 1.02rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .opcao:active {
+    transform: scale(0.98);
+  }
+
+  .final {
+    padding-top: 0.5rem;
+    animation: subir 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .percentual {
+    min-height: 1.3rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .botoes-final {
+    display: grid;
+    gap: 0.7rem;
+    padding-top: 1rem;
+  }
+
+  .de-novo {
+    min-height: var(--tap);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--cor-a);
+    box-shadow: 0 0.5rem 1.1rem -0.7rem color-mix(in srgb, var(--cor-a) 80%, black 15%);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .de-novo:active {
+    transform: scale(0.98);
+  }
+
+  .mais {
+    display: block;
+    padding-top: 0.4rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+  }
+</style>

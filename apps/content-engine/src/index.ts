@@ -1,6 +1,7 @@
 import { D1RateLimitReservationStore } from './api-rate-limit-d1';
 import { gerarDesafiosDiarios } from './geradores/desafios-diarios';
 import { gerarDilemas, type ResultadoGeracao } from './geradores/dilemas';
+import { gerarHistoria } from './geradores/historias';
 import { gerarPalpites } from './geradores/palpites';
 import { gerarPerguntas } from './geradores/quiz';
 import { Gemini } from './gemini';
@@ -37,7 +38,18 @@ interface Relatorio {
   quiz: (ResultadoGeracao & { tema: string })[];
   palpites: ResultadoGeracao;
   desafiosDiarios: ResultadoGeracao;
+  historia: ResultadoGeracao;
 }
+
+/**
+ * Dia da semana (UTC, 0 = domingo) em que uma historia nova e gerada.
+ *
+ * So um dia por semana, nao todo dia como os outros jogos: uma historia e o
+ * conteudo mais caro de consumir (a pessoa le uma arvore inteira, nao
+ * responde uma pergunta de 5 segundos) e o mais caro de revisar — nao faz
+ * sentido no mesmo ritmo.
+ */
+const DIA_DA_SEMANA_HISTORIA = 0;
 
 /**
  * Uma execucao do motor de conteudo.
@@ -93,7 +105,12 @@ async function executar(env: Ambiente): Promise<Relatorio> {
   // selecao do desafio de hoje e deterministica, nao consumida como fila.
   const desafiosDiarios = await gerarDesafiosDiarios(env.DB, gemini, statusInicial);
 
-  return { dilemas, quiz, palpites, desafiosDiarios };
+  const historia =
+    new Date().getUTCDay() === DIA_DA_SEMANA_HISTORIA
+      ? await gerarHistoria(env.DB, gemini, statusInicial)
+      : { gerados: 0, inseridos: 0, descartados: 0 };
+
+  return { dilemas, quiz, palpites, desafiosDiarios, historia };
 }
 
 /**

@@ -28,6 +28,7 @@ saem daí e valem em todo o código:
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 | Adivinhe Antes de Revelar | `/adivinhe` | Palpite de quantidade, revela o valor real e a taxa de acerto |
 | Jogo Diário | `/diario` | Um desafio igual pra todo mundo por dia, 5 pistas, palpite em texto livre |
+| História Interativa | `/historia/[slug]` | Árvore de escolhas binárias, até 4 finais, % de quem chegou em cada um |
 
 Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
 `localStorage` do navegador e mandando-os de volta como exclusão na próxima
@@ -55,6 +56,24 @@ raso faz o ciclo se repetir cedo demais. O palpite é texto livre, validado
 no cliente contra `accepted_answers_json` (variantes aceitas, geradas junto
 com o desafio) usando a mesma normalização sem acento da busca da home
 (`lib/texto.ts`).
+
+História Interativa é o primeiro conteúdo do site em **árvore**, não lista
+plana: cada nó tem até duas escolhas apontando para outro nó
+(`choice_a_next_id`/`choice_b_next_id`, auto-referência dentro de
+`story_nodes`), até chegar num final (`is_ending`). Toda história tem
+profundidade fixa 3 — raiz + 2 níveis de escolha = até 4 finais — decisão
+deliberada para manter o gerador e a revisão simples. Cada história é sua
+própria linha em `games` (mesmo padrão de cada lista de ranking/tema de
+quiz), não um jogo genérico único. A árvore inteira sai do banco de uma vez
+e vai embutida no HTML (`lib/db/historias.ts`, `buscarHistoria`): navegar de
+nó em nó é só troca de estado no cliente, sem fetch — só o final chama a
+API, pra registrar `times_reached`. Cor e emoji são por **categoria**
+(Terror, Mistério, Sobrevivência, Romance, Comédia, Crime, Ficção
+científica), curados à mão no gerador (`IDENTIDADE_POR_CATEGORIA` em
+`geradores/historias.ts`) pela mesma razão do resto do site: cor exige
+julgamento visual, não é escolha do modelo. Gera uma história nova por
+semana, não por dia — é o conteúdo mais caro de consumir (a pessoa lê uma
+árvore inteira) e o mais caro de revisar.
 
 ## Identidade visual
 

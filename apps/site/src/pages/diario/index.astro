@@ -285,7 +285,12 @@ const desafioJson = JSON.stringify(desafio).replaceAll('<', '\\u003c');
   }
 </script>
 
-<style>
+<style is:global>
+  /* Global pelo mesmo motivo do Quiz/Adivinhe/Historia: `.pista` e recriada
+     via `document.createElement` a cada pista, e elemento criado por JS nao
+     recebe o atributo de escopo do Astro — sem `is:global` a regra `.pista`
+     inteira (fundo, padding, borda) nunca era aplicada, nao so a cor. Seguro
+     aqui porque a pagina e MPA (sem client router). */
   .vazio {
     padding: 4rem 0;
     color: rgba(255, 255, 255, 0.85);

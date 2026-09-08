@@ -344,7 +344,10 @@ const desafioJson = JSON.stringify(desafio).replaceAll('<', '\\u003c');
     border: 1px solid color-mix(in srgb, var(--cor-a) 85%, black 12%);
     border-radius: var(--radius-sm);
     background: var(--cor-a);
-    color: #fff;
+    /* Branco em cima de --cor-a (#f59e0b, ambar claro) da contraste ~2:1 —
+       quase ilegivel. --cor-a e claro demais pra texto branco; texto escuro
+       (mesmo tom usado no resto do site) resolve sem mudar a cor do cartao. */
+    color: var(--text);
     font-size: 1rem;
     font-weight: 600;
     line-height: 1.4;

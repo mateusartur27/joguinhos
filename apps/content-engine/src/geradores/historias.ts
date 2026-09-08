@@ -4,15 +4,16 @@ import type { ResultadoGeracao } from './dilemas';
 /**
  * Quantos niveis de escolha existem antes de um final.
  *
- * A arvore tem 3 CAMADAS DE NO (raiz, nivel 2, final), mas so 2 delas tem
- * escolha (raiz e nivel 2) — o final e so texto. E essa contagem de
+ * A arvore tem 4 CAMADAS DE NO (raiz, nivel 2, nivel 3, final), mas so 3
+ * delas tem escolha — o final e so texto + resultado. E essa contagem de
  * "escolhas restantes", nao de "camadas restantes", que `validaArvore`
  * precisa, senao ela desce um nivel a mais do que o schema realmente tem e
- * rejeita toda arvore correta (bug real, pego revisando o primeiro lote).
+ * rejeita toda arvore correta (bug real, pego revisando o primeiro lote:
+ * ver README).
  */
-const PROFUNDIDADE_DE_ESCOLHAS = 2;
+const PROFUNDIDADE_DE_ESCOLHAS = 3;
 
-const CATEGORIAS = [
+export const CATEGORIAS = [
   'Mistério',
   'Terror',
   'Sobrevivência',
@@ -22,12 +23,14 @@ const CATEGORIAS = [
   'Ficção científica',
 ] as const;
 
+export type Categoria = (typeof CATEGORIAS)[number];
+
 /**
  * Cor e emoji por categoria, curados a mao — a mesma regra do resto do site:
  * cor exige julgamento visual, nao e algo para o modelo escolher (ver
  * README, secao "Identidade visual").
  */
-const IDENTIDADE_POR_CATEGORIA: Record<(typeof CATEGORIAS)[number], { emoji: string; fundo: string; cartoes: [string, string] }> = {
+const IDENTIDADE_POR_CATEGORIA: Record<Categoria, { emoji: string; fundo: string; cartoes: [string, string] }> = {
   Terror: { emoji: '👻', fundo: '#7f1d1d', cartoes: ['#b45309', '#581c87'] },
   Mistério: { emoji: '🔍', fundo: '#4c1d95', cartoes: ['#b45309', '#0f766e'] },
   Sobrevivência: { emoji: '🏕️', fundo: '#14532d', cartoes: ['#b45309', '#7f1d1d'] },
@@ -37,36 +40,50 @@ const IDENTIDADE_POR_CATEGORIA: Record<(typeof CATEGORIAS)[number], { emoji: str
   'Ficção científica': { emoji: '🚀', fundo: '#1e3a8a', cartoes: ['#db2777', '#16a34a'] },
 };
 
-const INSTRUCAO = `Você escreve histórias interativas curtas para um site brasileiro de
-microjogos: a pessoa lê uma cena e escolhe entre duas opções, até chegar a um final.
+function instrucao(categoria: Categoria): string {
+  return `Você escreve uma história interativa curta para um site brasileiro de
+microjogos, na categoria "${categoria}": a pessoa lê uma cena e escolhe entre
+duas opções, até chegar a um final classificado como vitória ou derrota.
 
-Estrutura obrigatória (sempre profundidade 3, sempre binário):
+Estrutura obrigatória (sempre profundidade 4, sempre binário):
 - Cena raiz: situação inicial, com exatamente 2 opções.
 - Cada opção leva a uma segunda cena, também com exatamente 2 opções.
-- Cada uma dessas leva a um final (4 finais no total).
+- Cada uma dessas leva a uma terceira cena, também com exatamente 2 opções.
+- Cada uma dessas leva a um final (8 finais no total).
 
 Regras:
 - Português do Brasil, coloquial, no tempo presente ou passado recente.
 - Cada cena tem no máximo 3 frases curtas. É "história rápida", não conto.
-- Escolha 1 categoria da lista e mantenha o tom dela a história inteira.
+- Mantenha o tom de "${categoria}" a história inteira.
 - Os rótulos das opções são curtos (até 6 palavras), começando com um emoji
   relacionado à ação (ex.: "🚪 Abro a porta").
 - Terror e Crime pedem tensão e sugestão, NUNCA descrição gráfica de
   violência, sangue ou ferimento — o susto vem da atmosfera, não de detalhe
   explícito. Isso vale mesmo puxando o gênero ao limite.
-- Os 4 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
+- Cada final tem um "resultado": "vitoria" quando a pessoa sobrevive, consegue
+  o que queria ou resolve a situação a seu favor; "derrota" quando ela falha,
+  a situação piora ou ela fica presa/perdida. Use os dois — dos 8 finais, nem
+  todos podem ser vitória nem todos derrota.
+- Os 8 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
   final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,
   religião ou ofensa a pessoas reais.
 - Não repita nem parafraseie histórias que já existem.`;
+}
 
 const NO_FINAL = {
   type: 'object',
-  properties: { texto: { type: 'string' } },
-  required: ['texto'],
+  properties: {
+    texto: { type: 'string' },
+    resultado: { type: 'string', enum: ['vitoria', 'derrota'] },
+  },
+  required: ['texto', 'resultado'],
 };
 
-function noComOpcoes(proximo: typeof NO_FINAL) {
+// `proximo` aceita qualquer schema (o nivel seguinte da arvore, que pode ser
+// outro `noComOpcoes(...)` ou o `NO_FINAL`) — por isso o tipo solto em vez
+// de `typeof NO_FINAL`, senao so o proprio `NO_FINAL` seria aceito aqui.
+function noComOpcoes(proximo: Record<string, unknown>) {
   return {
     type: 'object',
     properties: {
@@ -86,20 +103,21 @@ function noComOpcoes(proximo: typeof NO_FINAL) {
   };
 }
 
-const NO_NIVEL_2 = noComOpcoes(NO_FINAL);
+const NO_NIVEL_3 = noComOpcoes(NO_FINAL);
+const NO_NIVEL_2 = noComOpcoes(NO_NIVEL_3);
 
 const SCHEMA = {
   type: 'object',
   properties: {
     titulo: { type: 'string' },
-    categoria: { type: 'string', enum: [...CATEGORIAS] },
     ...noComOpcoes(NO_NIVEL_2).properties,
   },
-  required: ['titulo', 'categoria', 'texto', 'opcaoA', 'opcaoB'],
+  required: ['titulo', 'texto', 'opcaoA', 'opcaoB'],
 };
 
 interface NoFinalGerado {
   texto: string;
+  resultado: string;
 }
 
 interface NoComOpcoesGerado {
@@ -110,22 +128,23 @@ interface NoComOpcoesGerado {
 
 interface HistoriaGerada extends NoComOpcoesGerado {
   titulo: string;
-  categoria: string;
 }
 
 export async function gerarHistoria(
   db: D1Database,
   gemini: Gemini,
+  categoria: Categoria,
   statusInicial: 'draft' | 'published',
 ): Promise<ResultadoGeracao> {
   const { results: existentes } = await db
-    .prepare('SELECT title FROM stories ORDER BY rowid DESC LIMIT 30')
+    .prepare('SELECT title FROM stories WHERE category = ? ORDER BY rowid DESC LIMIT 20')
+    .bind(categoria)
     .all<{ title: string }>();
   const jaExistem = existentes.map((h) => `- ${h.title}`).join('\n');
 
   const resposta = await gemini.gerar<HistoriaGerada>({
-    instrucaoDeSistema: INSTRUCAO,
-    entrada: `Gere uma história nova, variando a categoria.\n\nHistórias que já existem (não repita nem reformule):\n${jaExistem}`,
+    instrucaoDeSistema: instrucao(categoria),
+    entrada: `Gere uma história nova de "${categoria}".\n\nHistórias dessa categoria que já existem (não repita nem reformule):\n${jaExistem}`,
     schema: SCHEMA,
   });
 
@@ -133,18 +152,14 @@ export async function gerarHistoria(
     return { gerados: 1, inseridos: 0, descartados: 1 };
   }
 
-  const categoria = CATEGORIAS.includes(resposta.categoria as (typeof CATEGORIAS)[number])
-    ? (resposta.categoria as (typeof CATEGORIAS)[number])
-    : 'Mistério';
-  const identidade = IDENTIDADE_POR_CATEGORIA[categoria];
-
-  const slug = await slugDisponivel(db, resposta.titulo);
-
   const duplicado = await db
     .prepare('SELECT 1 FROM stories WHERE lower(title) = lower(?)')
     .bind(resposta.titulo.trim())
     .first();
   if (duplicado) return { gerados: 1, inseridos: 0, descartados: 1 };
+
+  const identidade = IDENTIDADE_POR_CATEGORIA[categoria];
+  const slug = await slugDisponivel(db, resposta.titulo);
 
   await db
     .prepare(
@@ -155,23 +170,6 @@ export async function gerarHistoria(
     .run();
 
   await inserirNo(db, slug, resposta, true);
-
-  await db
-    .prepare(
-      `INSERT INTO games (slug, title, tagline, emoji, kind, href, status, sort_order, color, card_colors)
-       VALUES (?, ?, ?, ?, 'historia', ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM games), ?, ?)`,
-    )
-    .bind(
-      `historia-${slug}`,
-      resposta.titulo.trim(),
-      `Uma história interativa de ${categoria.toLowerCase()}. Suas escolhas decidem o final.`,
-      identidade.emoji,
-      `/historia/${slug}`,
-      statusInicial,
-      identidade.fundo,
-      JSON.stringify(identidade.cartoes),
-    )
-    .run();
 
   return { gerados: 1, inseridos: 1, descartados: 0 };
 }
@@ -188,8 +186,8 @@ async function inserirNo(
 ): Promise<number> {
   if (!('opcaoA' in no)) {
     const resultado = await db
-      .prepare(`INSERT INTO story_nodes (story_slug, is_ending, text) VALUES (?, 1, ?)`)
-      .bind(storySlug, no.texto.trim())
+      .prepare(`INSERT INTO story_nodes (story_slug, is_ending, text, outcome) VALUES (?, 1, ?, ?)`)
+      .bind(storySlug, no.texto.trim(), no.resultado)
       .run();
     return resultado.meta.last_row_id!;
   }
@@ -243,8 +241,12 @@ function validaArvore(no: unknown, profundidadeRestante: number): no is Historia
   if (typeof objeto.texto !== 'string' || objeto.texto.trim().length < 4) return false;
 
   if (profundidadeRestante === 0) {
-    // Final: nao pode ter opcoes.
-    return !objeto.opcaoA && !objeto.opcaoB;
+    // Final: precisa do resultado, e nao pode ter opcoes.
+    return (
+      (objeto.resultado === 'vitoria' || objeto.resultado === 'derrota') &&
+      !objeto.opcaoA &&
+      !objeto.opcaoB
+    );
   }
 
   for (const chave of ['opcaoA', 'opcaoB'] as const) {

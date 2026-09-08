@@ -1,11 +1,14 @@
 ---
 import { env } from 'cloudflare:workers';
 import Base from '../../layouts/Base.astro';
-import { buscarHistoria } from '../../lib/db/historias';
+import { historiaDoDia } from '../../lib/db/historias';
 
-const slug = Astro.params.slug!;
-const historia = await buscarHistoria(env.DB, slug);
-if (!historia) return new Response('História não encontrada', { status: 404 });
+// O parametro da rota e a CATEGORIA (slugificada), nao o slug de uma
+// historia especifica — cada tema tem uma historia diferente por dia,
+// mesmo indice deterministico do Jogo Diario.
+const categoriaSlug = Astro.params.slug!;
+const historia = await historiaDoDia(env.DB, categoriaSlug);
+if (!historia) return new Response('Tema não encontrado', { status: 404 });
 
 // A arvore inteira vai no HTML — e uma historia curta, cabe facil, e evita
 // ida de rede a cada escolha (so o final chama a API, para registrar).
@@ -24,7 +27,7 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
     style={`--cor-a: ${historia.coresCartoes[0]}; --cor-b: ${historia.coresCartoes[1] ?? historia.coresCartoes[0]};`}
   >
     <header class="cabecalho">
-      <a class="voltar" href="/">← joguinhos</a>
+      <a class="voltar" href="/historia">← temas</a>
       <span class="passo" data-passo />
     </header>
 
@@ -36,9 +39,11 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
     <div class="opcoes" data-opcoes></div>
 
     <div class="final" data-final hidden>
+      <p class="veredito-final" data-veredito-final />
       <p class="percentual" data-percentual />
       <div class="botoes-final">
         <button class="de-novo" data-de-novo type="button">🔁 Jogar de novo</button>
+        <a class="trocar-tema" href="/historia">🎭 Trocar de tema</a>
         <a class="mais" href="/">🎮 Ver mais jogos</a>
       </div>
     </div>
@@ -57,6 +62,7 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
     id: number;
     texto: string;
     ehFinal: boolean;
+    resultado: 'vitoria' | 'derrota' | null;
     opcaoA: OpcaoNo | null;
     opcaoB: OpcaoNo | null;
   }
@@ -65,11 +71,9 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
     slug: string;
     titulo: string;
     raizId: number;
+    profundidadeTotal: number;
     nos: NoHistoria[];
   }
-
-  /** Profundidade fixa de toda historia (raiz + 2 escolhas ate o final). */
-  const PROFUNDIDADE_TOTAL = 3;
 
   const jogo = document.querySelector<HTMLElement>('.jogo');
   if (jogo) iniciar(jogo);
@@ -85,6 +89,7 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
       cena: jogo.querySelector<HTMLElement>('[data-cena]')!,
       opcoes: jogo.querySelector<HTMLElement>('[data-opcoes]')!,
       final: jogo.querySelector<HTMLElement>('[data-final]')!,
+      veredito: jogo.querySelector<HTMLElement>('[data-veredito-final]')!,
       percentual: jogo.querySelector<HTMLElement>('[data-percentual]')!,
       deNovo: jogo.querySelector<HTMLButtonElement>('[data-de-novo]')!,
     };
@@ -100,14 +105,14 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
       if (!no) return;
 
       cenaAtual = cena;
-      el.passo.textContent = no.ehFinal ? 'Final' : `Cena ${cena} de ${PROFUNDIDADE_TOTAL}`;
+      el.passo.textContent = no.ehFinal ? 'Final' : `Cena ${cena} de ${historia.profundidadeTotal}`;
       el.cena.textContent = no.texto;
       jogo.scrollIntoView({ block: 'start', behavior: 'smooth' });
 
       if (no.ehFinal) {
         el.opcoes.hidden = true;
         el.opcoes.replaceChildren();
-        registrarFinal(no.id);
+        registrarFinal(no.id, no.resultado);
         return;
       }
 
@@ -128,7 +133,9 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
       );
     }
 
-    async function registrarFinal(nodeId: number) {
+    async function registrarFinal(nodeId: number, resultado: 'vitoria' | 'derrota' | null) {
+      el.veredito.textContent =
+        resultado === 'vitoria' ? '🏆 Você venceu!' : resultado === 'derrota' ? '💀 Você perdeu.' : '';
       el.percentual.textContent = '';
       el.final.hidden = false;
 
@@ -236,6 +243,14 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
     animation: subir 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  .veredito-final {
+    padding-bottom: 0.3rem;
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
   .percentual {
     min-height: 1.3rem;
     color: rgba(255, 255, 255, 0.85);
@@ -263,6 +278,18 @@ const historiaJson = JSON.stringify(historia).replaceAll('<', '\\u003c');
 
   .de-novo:active {
     transform: scale(0.98);
+  }
+
+  .trocar-tema {
+    min-height: var(--tap);
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--radius-sm);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
   }
 
   .mais {

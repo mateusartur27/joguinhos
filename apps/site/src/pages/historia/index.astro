@@ -1,0 +1,127 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../layouts/Base.astro';
+import { categoriasComHistoria } from '../../lib/db/historias';
+
+const categorias = await categoriasComHistoria(env.DB);
+---
+
+<Base
+  title="História Interativa — joguinhos"
+  description="Escolha o tema. Uma história nova todo dia, com vitória ou derrota no final."
+  bare
+>
+  <main class="pagina">
+    <header class="cabecalho">
+      <a class="voltar" href="/">← joguinhos</a>
+    </header>
+
+    <p class="eyebrow">História Interativa</p>
+    <h1 class="titulo">Escolha o tema de hoje</h1>
+    <p class="lead">Cada tema tem uma história diferente todo dia. Suas escolhas decidem se você vence ou perde.</p>
+
+    {
+      categorias.length === 0 ? (
+        <p class="vazio">Nenhum tema publicado ainda. Volte em instantes.</p>
+      ) : (
+        <ul class="temas">
+          {categorias.map((c) => (
+            <li>
+              <a class="tema" href={`/historia/${c.slug}`} style={`--tom: ${c.cor};`}>
+                <span class="nome">{c.categoria}</span>
+                <span class="seta">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  .pagina {
+    padding-bottom: 2rem;
+  }
+
+  .cabecalho {
+    padding-bottom: 1.75rem;
+  }
+
+  .voltar {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .eyebrow {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .titulo {
+    margin: 0.4rem 0 0.6rem;
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .lead {
+    max-width: 34ch;
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .vazio {
+    padding: 3rem 0;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .temas {
+    display: grid;
+    gap: 0.7rem;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tema {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    min-height: var(--tap);
+    padding: 1.1rem 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--tom) 85%, black 12%);
+    border-radius: var(--radius);
+    background: var(--tom);
+    box-shadow: 0 0.6rem 1.4rem -0.7rem color-mix(in srgb, var(--tom) 80%, black 15%);
+    text-decoration: none;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .tema:active {
+    transform: scale(0.99);
+  }
+
+  .nome {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .seta {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1.1rem;
+  }
+</style>

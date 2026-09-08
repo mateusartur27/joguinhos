@@ -28,7 +28,7 @@ saem daí e valem em todo o código:
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 | Adivinhe Antes de Revelar | `/adivinhe` | Palpite de quantidade, revela o valor real e a taxa de acerto |
 | Jogo Diário | `/diario` | Um desafio igual pra todo mundo por dia, 5 pistas, palpite em texto livre |
-| História Interativa | `/historia/[slug]` | Árvore de escolhas binárias, até 4 finais, % de quem chegou em cada um |
+| História Interativa | `/historia`, `/historia/[categoria]` | Escolhe o tema, joga a história de hoje daquele tema — 8 finais, vitória ou derrota |
 
 Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
 `localStorage` do navegador e mandando-os de volta como exclusão na próxima
@@ -60,20 +60,45 @@ com o desafio) usando a mesma normalização sem acento da busca da home
 História Interativa é o primeiro conteúdo do site em **árvore**, não lista
 plana: cada nó tem até duas escolhas apontando para outro nó
 (`choice_a_next_id`/`choice_b_next_id`, auto-referência dentro de
-`story_nodes`), até chegar num final (`is_ending`). Toda história tem
-profundidade fixa 3 — raiz + 2 níveis de escolha = até 4 finais — decisão
-deliberada para manter o gerador e a revisão simples. Cada história é sua
-própria linha em `games` (mesmo padrão de cada lista de ranking/tema de
-quiz), não um jogo genérico único. A árvore inteira sai do banco de uma vez
-e vai embutida no HTML (`lib/db/historias.ts`, `buscarHistoria`): navegar de
-nó em nó é só troca de estado no cliente, sem fetch — só o final chama a
-API, pra registrar `times_reached`. Cor e emoji são por **categoria**
-(Terror, Mistério, Sobrevivência, Romance, Comédia, Crime, Ficção
-científica), curados à mão no gerador (`IDENTIDADE_POR_CATEGORIA` em
+`story_nodes`), até chegar num final (`is_ending`, com `outcome` = "vitoria"
+ou "derrota"). Toda história tem profundidade fixa 4 — raiz + 3 níveis de
+escolha = 8 finais — decisão deliberada para manter o gerador e a revisão
+simples.
+
+É um jogo só, não um por história: a pessoa escolhe o **tema** em
+`/historia` e joga a história daquele tema **de hoje** — mesma seleção
+deterministica do Jogo Diário (`historiaDoDia` em `lib/db/historias.ts`,
+índice pelo dia % histórias daquela categoria), só que filtrada por
+categoria em vez de global. Antes disso cada história era uma página fixa e
+permanente com seu próprio cartão na home; ficou parecido demais com Jogo
+Diário sem ser um jogo novo de verdade, então virou o mesmo padrão.
+
+Cor e emoji são por **categoria** (Terror, Mistério, Sobrevivência, Romance,
+Comédia, Crime, Ficção científica) — todas as histórias da mesma categoria
+compartilham cor, curada à mão no gerador (`IDENTIDADE_POR_CATEGORIA` em
 `geradores/historias.ts`) pela mesma razão do resto do site: cor exige
-julgamento visual, não é escolha do modelo. Gera uma história nova por
-semana, não por dia — é o conteúdo mais caro de consumir (a pessoa lê uma
-árvore inteira) e o mais caro de revisar.
+julgamento visual, não é escolha do modelo. A árvore inteira sai do banco de
+uma vez e vai embutida no HTML (`lib/db/historias.ts`, `buscarHistoria`):
+navegar de nó em nó é só troca de estado no cliente, sem fetch — só o final
+chama a API, pra registrar `times_reached`. Gera uma história nova **por
+categoria, todo dia** (7 chamadas ao Gemini, uma por categoria, em loop —
+não uma chamada só pedindo várias árvores, que tende a homogeneizar o
+resultado) — antes era uma história por semana no total; ficou mais caro
+(7x mais chamadas) mas ainda trivial pro rate limit, e necessário pra "um
+tema por dia" fazer sentido pras 7 categorias ao mesmo tempo.
+
+Observação da primeira leva: os 8 finais de uma história de Romance saíram
+7 vitória e 1 derrota — a instrução pede "nem todos podem ser só um dos
+dois", o que tecnicamente foi seguido, mas o gênero puxa naturalmente pra
+final feliz. Não é erro de conteúdo, é um desbalanceamento que pode valer a
+pena reforçar na instrução se se repetir.
+
+As 3 histórias escritas à mão na versão anterior (profundidade 3, 4 finais)
+continuam no ar dentro da categoria que já tinham — não foram descartadas,
+só ganharam `outcome` retroativo (migração `0010_historia_por_tema.sql`)
+pra não aparecer em branco na tela de final. Ficam mais curtas que as novas,
+o que não quebra nada: a árvore de cada história é lida isoladamente, sem
+precisar bater profundidade com as outras da mesma categoria.
 
 ## Identidade visual
 

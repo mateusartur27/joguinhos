@@ -1,0 +1,440 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../layouts/Base.astro';
+import { desafioDeHoje } from '../../lib/db/diario';
+import { buscarCoresDoJogo } from '../../lib/db/jogos';
+
+const desafio = await desafioDeHoje(env.DB);
+const cores = await buscarCoresDoJogo(env.DB, 'diario');
+
+// O desafio inteiro (incluindo resposta) vai no HTML — mesmo trade-off ja
+// aceito no Quiz: ver o codigo-fonte nao tira a graca de ninguem, e em troca
+// nao ha ida de rede a cada palpite errado.
+const desafioJson = JSON.stringify(desafio).replaceAll('<', '\\u003c');
+---
+
+<Base
+  title="Jogo Diário — joguinhos"
+  description="Um desafio novo todo dia. Descubra em até 5 pistas — todo mundo joga o mesmo hoje."
+  bare
+  corFundo={cores.fundo}
+>
+  {
+    !desafio ? (
+      <p class="vazio">Sem desafio publicado ainda. Volte em instantes.</p>
+    ) : (
+      <main
+        class="jogo"
+        style={`--cor-a: ${cores.cartoes[0]}; --cor-b: ${cores.cartoes[1] ?? cores.cartoes[0]};`}
+      >
+        <header class="cabecalho">
+          <a class="voltar" href="/">← joguinhos</a>
+          <span class="sequencia" data-sequencia hidden>
+            🔥 <span data-sequencia-numero />
+          </span>
+        </header>
+
+        <p class="categoria" data-categoria>
+          {desafio.categoria}
+        </p>
+        <h1 class="titulo">Desafio de hoje</h1>
+
+        <div class="pistas" data-pistas />
+
+        <form data-form class="palpite-form">
+          <input
+            type="text"
+            data-input
+            placeholder="Qual é a sua resposta?"
+            autocomplete="off"
+            enterkeyhint="send"
+          />
+          <button type="submit" class="palpitar">
+            Palpitar
+          </button>
+        </form>
+
+        <p class="feedback" data-feedback aria-live="polite" />
+
+        <div class="resultado" data-resultado hidden>
+          <p class="veredito" data-veredito />
+          <p class="resposta-certa" data-resposta-certa />
+          <p class="percentil" data-percentil />
+          <a class="mais" href="/">🎮 Ver mais jogos</a>
+        </div>
+
+        <script is:inline type="application/json" data-desafio set:html={desafioJson} />
+      </main>
+    )
+  }
+</Base>
+
+<script>
+  interface Desafio {
+    id: number;
+    categoria: string;
+    resposta: string;
+    respostasAceitas: string[];
+    pistas: string[];
+  }
+
+  interface Estatisticas {
+    hits: number[];
+    misses: number;
+    total: number;
+  }
+
+  import { semAcento } from '../../lib/texto';
+
+  const TENTATIVAS_MINIMAS_PARA_PERCENTIL = 20;
+
+  function normalizar(texto: string): string {
+    return semAcento(texto).toLowerCase().trim();
+  }
+
+  function dataDeHojeUTC(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  const jogo = document.querySelector<HTMLElement>('.jogo');
+  if (jogo) iniciar(jogo);
+
+  function iniciar(jogo: HTMLElement) {
+    const desafio: Desafio | null = JSON.parse(
+      jogo.querySelector<HTMLElement>('[data-desafio]')?.textContent ?? 'null',
+    );
+    if (!desafio) return;
+
+    const el = {
+      sequenciaBadge: jogo.querySelector<HTMLElement>('[data-sequencia]')!,
+      sequenciaNumero: jogo.querySelector<HTMLElement>('[data-sequencia-numero]')!,
+      pistas: jogo.querySelector<HTMLElement>('[data-pistas]')!,
+      form: jogo.querySelector<HTMLFormElement>('[data-form]')!,
+      input: jogo.querySelector<HTMLInputElement>('[data-input]')!,
+      feedback: jogo.querySelector<HTMLElement>('[data-feedback]')!,
+      resultado: jogo.querySelector<HTMLElement>('[data-resultado]')!,
+      veredito: jogo.querySelector<HTMLElement>('[data-veredito]')!,
+      respostaCerta: jogo.querySelector<HTMLElement>('[data-resposta-certa]')!,
+      percentil: jogo.querySelector<HTMLElement>('[data-percentil]')!,
+    };
+
+    const CHAVE_STREAK = 'joguinhos:diario:streak';
+    const CHAVE_RESULTADO_HOJE = `joguinhos:diario:resultado:${dataDeHojeUTC()}`;
+
+    mostrarSequencia(lerStreak().sequencia);
+
+    // Ja jogou hoje nesta sessao: mostra o resultado guardado em vez de
+    // deixar palpitar de novo. O desafio e igual para todo mundo, entao
+    // repetir a jogada no mesmo dia nao teria graca nenhuma.
+    const resultadoDeHoje = lerResultadoDeHoje();
+    if (resultadoDeHoje) {
+      mostrarResultadoFinal(resultadoDeHoje.pista, resultadoDeHoje.percentil);
+    } else {
+      const respostasNormalizadas = desafio.respostasAceitas.map(normalizar);
+      let pistaAtual = 1;
+      mostrarPista(1);
+
+      el.form.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        const palpite = normalizar(el.input.value);
+        if (!palpite) return;
+
+        if (respostasNormalizadas.includes(palpite)) {
+          acertou(pistaAtual);
+          return;
+        }
+
+        el.input.value = '';
+        if (pistaAtual >= 5) {
+          falhou();
+          return;
+        }
+
+        pistaAtual += 1;
+        mostrarPista(pistaAtual);
+        el.feedback.textContent = 'Não é essa. Mais uma pista:';
+      });
+    }
+
+    function mostrarPista(numero: number) {
+      const linha = document.createElement('p');
+      linha.className = 'pista';
+      linha.textContent = `${numero}. ${desafio!.pistas[numero - 1]}`;
+      el.pistas.appendChild(linha);
+    }
+
+    function acertou(pista: number) {
+      encerrarPalpite();
+      registrar(pista);
+    }
+
+    function falhou() {
+      encerrarPalpite();
+      registrar('falhou');
+    }
+
+    function encerrarPalpite() {
+      el.form.hidden = true;
+      el.feedback.textContent = '';
+    }
+
+    async function registrar(resultado: number | 'falhou') {
+      let percentil: number | null = null;
+      try {
+        const resposta = await fetch('/api/diario/tentativa', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ resultado }),
+        });
+        if (resposta.ok) {
+          const dados = (await resposta.json()) as { estatisticas: Estatisticas | null };
+          if (dados.estatisticas) percentil = calcularPercentil(dados.estatisticas, resultado);
+        }
+      } catch {
+        /* sem rede: mostra o resultado mesmo sem percentil */
+      }
+
+      guardarResultadoDeHoje(resultado, percentil);
+      atualizarStreak();
+      mostrarResultadoFinal(resultado, percentil);
+    }
+
+    function calcularPercentil(estatisticas: Estatisticas, resultado: number | 'falhou'): number | null {
+      if (estatisticas.total < TENTATIVAS_MINIMAS_PARA_PERCENTIL) return null;
+      if (resultado === 'falhou') return null;
+
+      const piores =
+        estatisticas.hits.slice(resultado).reduce((soma, n) => soma + n, 0) + estatisticas.misses;
+      return Math.round((piores / estatisticas.total) * 100);
+    }
+
+    function mostrarResultadoFinal(resultado: number | 'falhou', percentil: number | null) {
+      el.form.hidden = true;
+      el.feedback.textContent = '';
+
+      if (resultado === 'falhou') {
+        el.veredito.textContent = 'Não foi dessa vez.';
+        el.respostaCerta.textContent = `A resposta era: ${desafio!.resposta}.`;
+        el.percentil.textContent = '';
+      } else {
+        el.veredito.textContent =
+          resultado === 1 ? 'Acertou de primeira! 🎯' : `Acertou na pista ${resultado} de 5!`;
+        el.respostaCerta.textContent = `A resposta era: ${desafio!.resposta}.`;
+        el.percentil.textContent =
+          percentil === null
+            ? 'Você é um dos primeiros a jogar hoje. 🌱'
+            : `Melhor que ${percentil}% de quem jogou hoje.`;
+      }
+
+      el.resultado.hidden = false;
+    }
+
+    function lerResultadoDeHoje(): { pista: number | 'falhou'; percentil: number | null } | null {
+      try {
+        const bruto = localStorage.getItem(CHAVE_RESULTADO_HOJE);
+        return bruto ? JSON.parse(bruto) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function guardarResultadoDeHoje(pista: number | 'falhou', percentil: number | null) {
+      try {
+        localStorage.setItem(CHAVE_RESULTADO_HOJE, JSON.stringify({ pista, percentil }));
+      } catch {
+        /* sessao sem armazenamento: o jogo continua, so nao lembra amanha */
+      }
+    }
+
+    function lerStreak(): { ultimaData: string; sequencia: number } {
+      try {
+        const bruto = localStorage.getItem(CHAVE_STREAK);
+        const valor = bruto ? JSON.parse(bruto) : null;
+        return valor && typeof valor.sequencia === 'number'
+          ? valor
+          : { ultimaData: '', sequencia: 0 };
+      } catch {
+        return { ultimaData: '', sequencia: 0 };
+      }
+    }
+
+    function atualizarStreak() {
+      const hoje = dataDeHojeUTC();
+      const atual = lerStreak();
+      if (atual.ultimaData === hoje) {
+        mostrarSequencia(atual.sequencia);
+        return;
+      }
+
+      const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+      const sequencia = atual.ultimaData === ontem ? atual.sequencia + 1 : 1;
+
+      try {
+        localStorage.setItem(CHAVE_STREAK, JSON.stringify({ ultimaData: hoje, sequencia }));
+      } catch {
+        /* sessao sem armazenamento */
+      }
+      mostrarSequencia(sequencia);
+    }
+
+    function mostrarSequencia(sequencia: number) {
+      if (sequencia < 2) return;
+      el.sequenciaNumero.textContent = `${sequencia} dias`;
+      el.sequenciaBadge.hidden = false;
+    }
+  }
+</script>
+
+<style>
+  .vazio {
+    padding: 4rem 0;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: center;
+  }
+
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .voltar {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .sequencia {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .categoria {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .titulo {
+    margin: 0.4rem 0 1.25rem;
+    color: #fff;
+    font-size: clamp(1.6rem, 7vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .pistas {
+    display: grid;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .pista {
+    padding: 0.9rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--cor-a) 85%, black 12%);
+    border-radius: var(--radius-sm);
+    background: var(--cor-a);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    animation: subir 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .palpite-form {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .palpite-form input {
+    flex: 1;
+    min-height: var(--tap);
+    padding: 0 1rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    font-size: 1rem;
+  }
+
+  .palpite-form input::placeholder {
+    color: var(--muted);
+  }
+
+  .palpitar {
+    flex: none;
+    min-height: var(--tap);
+    padding: 0 1.4rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--cor-b);
+    box-shadow: 0 0.5rem 1.1rem -0.7rem color-mix(in srgb, var(--cor-b) 80%, black 15%);
+    color: #fff;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .palpitar:active {
+    transform: scale(0.98);
+  }
+
+  .feedback {
+    padding-top: 0.7rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .resultado {
+    padding-top: 0.5rem;
+    animation: subir 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .veredito {
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .resposta-certa {
+    padding-top: 0.3rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .percentil {
+    padding-top: 0.3rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.92rem;
+  }
+
+  .mais {
+    display: block;
+    padding-top: 2rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+  }
+</style>

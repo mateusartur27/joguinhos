@@ -3,12 +3,9 @@ import { env } from 'cloudflare:workers';
 import AdSlot from '../components/AdSlot.astro';
 import Base from '../layouts/Base.astro';
 import { buscarJogos } from '../lib/db/jogos';
+import { semAcento } from '../lib/texto';
 
 const jogos = await buscarJogos(env.DB);
-
-// Sem acento para "voce" encontrar "Você" — a mesma normalizacao roda nos
-// dois lados (aqui no texto indexado, no script no que a pessoa digita).
-const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '');
 ---
 
 <Base
@@ -71,6 +68,8 @@ const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, 
 </Base>
 
 <script>
+  import { semAcento } from '../lib/texto';
+
   const campo = document.querySelector<HTMLInputElement>('#busca-jogos');
   const itens = [...document.querySelectorAll<HTMLElement>('[data-item]')];
   const semResultado = document.querySelector<HTMLElement>('[data-sem-resultado]');
@@ -78,11 +77,7 @@ const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, 
     // Sem jogo publicado, a busca nem existe no HTML — nada a fazer.
   } else {
     campo.addEventListener('input', () => {
-      const termo = campo.value
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .trim();
+      const termo = semAcento(campo.value).toLowerCase().trim();
 
       let visiveis = 0;
       for (const item of itens) {

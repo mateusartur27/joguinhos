@@ -1,8 +1,9 @@
 import { D1RateLimitReservationStore } from './api-rate-limit-d1';
-import { Gemini } from './gemini';
+import { gerarDesafiosDiarios } from './geradores/desafios-diarios';
 import { gerarDilemas, type ResultadoGeracao } from './geradores/dilemas';
 import { gerarPalpites } from './geradores/palpites';
 import { gerarPerguntas } from './geradores/quiz';
+import { Gemini } from './gemini';
 import { createRateLimitedFetch } from './rate-limited-fetch';
 
 interface Ambiente {
@@ -35,6 +36,7 @@ interface Relatorio {
   dilemas: ResultadoGeracao;
   quiz: (ResultadoGeracao & { tema: string })[];
   palpites: ResultadoGeracao;
+  desafiosDiarios: ResultadoGeracao;
 }
 
 /**
@@ -87,7 +89,11 @@ async function executar(env: Ambiente): Promise<Relatorio> {
 
   const palpites = await gerarPalpites(env.DB, gemini, PALPITES_POR_EXECUCAO, statusInicial);
 
-  return { dilemas, quiz, palpites };
+  // So gera quando o estoque esta baixo (ver ESTOQUE_MINIMO no gerador) — a
+  // selecao do desafio de hoje e deterministica, nao consumida como fila.
+  const desafiosDiarios = await gerarDesafiosDiarios(env.DB, gemini, statusInicial);
+
+  return { dilemas, quiz, palpites, desafiosDiarios };
 }
 
 /**

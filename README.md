@@ -27,6 +27,7 @@ saem daí e valem em todo o código:
 | Ranking Coletivo | `/ranking/[lista]` | Duelos par a par alimentando um ranking por Elo |
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 | Adivinhe Antes de Revelar | `/adivinhe` | Palpite de quantidade, revela o valor real e a taxa de acerto |
+| Jogo Diário | `/diario` | Um desafio igual pra todo mundo por dia, 5 pistas, palpite em texto livre |
 
 Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
 `localStorage` do navegador e mandando-os de volta como exclusão na próxima
@@ -42,6 +43,18 @@ contínuo sem rodada fixa (como Escolhas) com botões de múltipla escolha
 volátil (preço, cotação, população que muda todo ano) pelo mesmo motivo do
 quiz — aqui o "valor real" é o próprio conteúdo do reveal, então errar o
 número quebra o jogo de um jeito mais direto que uma alternativa errada.
+
+Jogo Diário é o único jogo **sem sorteio**: todo mundo que acessa no mesmo
+dia recebe o mesmo desafio (`desafioDeHoje` em `lib/db/diario.ts` pega o
+índice pelo dia UTC, `indiceDoDia = hoje % totalPublicado` — determinístico
+de propósito, senão "melhor que X% de hoje" não compararia gente que jogou
+a mesma coisa). O motor de conteúdo não gera um lote por dia como os outros:
+gera só quando o estoque cai abaixo de 30 (`ESTOQUE_MINIMO` em
+`geradores/desafios-diarios.ts`), porque a seleção é por índice — estoque
+raso faz o ciclo se repetir cedo demais. O palpite é texto livre, validado
+no cliente contra `accepted_answers_json` (variantes aceitas, geradas junto
+com o desafio) usando a mesma normalização sem acento da busca da home
+(`lib/texto.ts`).
 
 ## Identidade visual
 

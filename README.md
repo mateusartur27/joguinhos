@@ -26,6 +26,7 @@ saem daí e valem em todo o código:
 | Escolhas Impossíveis | `/escolhas` | Dilema binário, revela a % coletiva depois do voto |
 | Ranking Coletivo | `/ranking/[lista]` | Duelos par a par alimentando um ranking por Elo |
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
+| Adivinhe Antes de Revelar | `/adivinhe` | Palpite de quantidade, revela o valor real e a taxa de acerto |
 
 Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
 `localStorage` do navegador e mandando-os de volta como exclusão na próxima
@@ -34,6 +35,13 @@ Sem isso, um tema com poucas perguntas publicadas (o caso real: `futebol`
 tinha 14 e a rodada sorteia 8 — "jogar de novo" caía quase sempre nas mesmas)
 repetia quase todo "jogar de novo". Se a exclusão esgotar o acervo do tema, a
 função cai para sorteio sem exclusão — repetir é melhor que tela vazia.
+
+Adivinhe Antes de Revelar reaproveita os dois padrões ao mesmo tempo: fluxo
+contínuo sem rodada fixa (como Escolhas) com botões de múltipla escolha
+(como Quiz). A instrução do gerador (`geradores/palpites.ts`) proíbe fato
+volátil (preço, cotação, população que muda todo ano) pelo mesmo motivo do
+quiz — aqui o "valor real" é o próprio conteúdo do reveal, então errar o
+número quebra o jogo de um jeito mais direto que uma alternativa errada.
 
 ## Identidade visual
 

@@ -1,0 +1,424 @@
+---
+import { env } from 'cloudflare:workers';
+import Base from '../../layouts/Base.astro';
+import { sortearPalpites } from '../../lib/db/guesses';
+import { buscarCoresDoJogo } from '../../lib/db/jogos';
+
+// Mesmo motivo de Escolhas Impossiveis: quem chega de link direto nao pode
+// ver tela vazia esperando `fetch`.
+const fila = await sortearPalpites(env.DB, { limite: 3 });
+const primeiro = fila[0];
+const cores = await buscarCoresDoJogo(env.DB, 'adivinhe');
+
+// `<` vira escape unicode pelo mesmo motivo de Escolhas/Quiz.
+const filaJson = JSON.stringify(fila).replaceAll('<', '\\u003c');
+---
+
+<Base
+  title="Adivinhe Antes de Revelar — joguinhos"
+  description="Escolha um palpite e veja se você chegou perto do valor real. Sem cadastro."
+  bare
+  corFundo={cores.fundo}
+>
+  {
+    !primeiro ? (
+      <p class="vazio">Sem palpites publicados ainda. Volte em instantes.</p>
+    ) : (
+      <main class="jogo" data-cores={JSON.stringify(cores.cartoes)}>
+        <header class="cabecalho">
+          <a class="voltar" href="/">← joguinhos</a>
+          <span class="placar" data-placar>0 palpites</span>
+        </header>
+
+        <p class="categoria" data-categoria>
+          {primeiro.categoria}
+        </p>
+        <h1 class="pergunta" data-pergunta>
+          {primeiro.prompt}
+        </h1>
+
+        <div class="alternativas" data-alternativas>
+          {primeiro.alternativas.map((texto, indice) => (
+            <button
+              class="alt"
+              type="button"
+              style={`--cor: ${cores.cartoes[indice % cores.cartoes.length]};`}
+            >
+              <span class="letra">{String.fromCharCode(65 + indice)}</span>
+              <span class="texto-alt">{texto}</span>
+            </button>
+          ))}
+        </div>
+
+        <div class="depois" data-depois hidden>
+          <p class="veredito" data-veredito aria-live="polite" />
+          <p class="valor-real" data-valor-real />
+          <p class="explicacao" data-explicacao />
+        </div>
+
+        <a class="mais" href="/">🎮 Ver mais jogos</a>
+
+        <script is:inline type="application/json" data-fila-inicial set:html={filaJson} />
+      </main>
+    )
+  }
+</Base>
+
+<script>
+  interface Palpite {
+    id: number;
+    categoria: string;
+    prompt: string;
+    alternativas: string[];
+    correta: number;
+    valorReal: string;
+    explicacao: string | null;
+    taxaAcerto: number | null;
+  }
+
+  const CHAVE_VISTOS = 'joguinhos:adivinhe:vistos';
+  const CHAVE_PLACAR = 'joguinhos:adivinhe:placar';
+
+  /** Quanto o resultado fica na tela antes do proximo palpite entrar sozinho. */
+  const PAUSA_DO_REVEAL = 2000;
+
+  const jogo = document.querySelector<HTMLElement>('.jogo');
+  if (jogo) iniciar(jogo);
+
+  function iniciar(jogo: HTMLElement) {
+    const cores: string[] = JSON.parse(jogo.dataset.cores ?? '[]');
+
+    const el = {
+      categoria: jogo.querySelector<HTMLElement>('[data-categoria]')!,
+      pergunta: jogo.querySelector<HTMLElement>('[data-pergunta]')!,
+      placar: jogo.querySelector<HTMLElement>('[data-placar]')!,
+      alternativas: jogo.querySelector<HTMLElement>('[data-alternativas]')!,
+      depois: jogo.querySelector<HTMLElement>('[data-depois]')!,
+      veredito: jogo.querySelector<HTMLElement>('[data-veredito]')!,
+      valorReal: jogo.querySelector<HTMLElement>('[data-valor-real]')!,
+      explicacao: jogo.querySelector<HTMLElement>('[data-explicacao]')!,
+    };
+
+    function lerLista(chave: string): number[] {
+      try {
+        const bruto = localStorage.getItem(chave);
+        const valor: unknown = bruto ? JSON.parse(bruto) : [];
+        return Array.isArray(valor) ? valor.filter((v) => Number.isInteger(v)) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function guardar(chave: string, valor: unknown) {
+      try {
+        localStorage.setItem(chave, JSON.stringify(valor));
+      } catch {
+        /* sessao sem armazenamento: o jogo continua, so nao lembra */
+      }
+    }
+
+    function lerPlacar(): number {
+      try {
+        return Number.parseInt(localStorage.getItem(CHAVE_PLACAR) ?? '0', 10) || 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    const inicial: Palpite[] = JSON.parse(
+      jogo.querySelector<HTMLElement>('[data-fila-inicial]')?.textContent ?? '[]',
+    );
+
+    let vistos = lerLista(CHAVE_VISTOS);
+    let placar = lerPlacar();
+    let fila = inicial.filter((p) => !vistos.includes(p.id));
+    let atual: Palpite | null = null;
+    let respondendo = false;
+
+    atualizarPlacar();
+
+    // O servidor nao conhece o historico local: o item que veio no HTML pode
+    // ser um que a pessoa ja respondeu. Nesse caso troca por um novo.
+    if (fila.length > 0 && fila[0]!.id === inicial[0]?.id) {
+      atual = fila.shift()!;
+      montarBotoes(atual);
+      abastecer();
+    } else {
+      avancar();
+    }
+
+    async function abastecer() {
+      if (fila.length >= 2) return;
+      try {
+        const resposta = await fetch(
+          `/api/adivinhe/proximo?n=3&vistos=${vistos.slice(-150).join(',')}`,
+        );
+        if (!resposta.ok) return;
+        const dados = (await resposta.json()) as { palpites: Palpite[] };
+        fila.push(...dados.palpites.filter((p) => p.id !== atual?.id));
+      } catch {
+        /* sem rede: tenta de novo na proxima resposta */
+      }
+    }
+
+    async function avancar() {
+      if (fila.length === 0) await abastecer();
+      const proximo = fila.shift();
+      if (!proximo) return;
+      mostrar(proximo);
+      abastecer();
+    }
+
+    function mostrar(palpite: Palpite) {
+      atual = palpite;
+      respondendo = false;
+
+      el.categoria.textContent = palpite.categoria;
+      el.pergunta.textContent = palpite.prompt;
+      el.depois.hidden = true;
+      montarBotoes(palpite);
+      jogo.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
+    function montarBotoes(palpite: Palpite) {
+      el.alternativas.replaceChildren(
+        ...palpite.alternativas.map((texto, posicao) => {
+          const botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'alt';
+          if (cores.length > 0) {
+            botao.style.setProperty('--cor', cores[posicao % cores.length]!);
+          }
+
+          const letra = document.createElement('span');
+          letra.className = 'letra';
+          letra.textContent = String.fromCharCode(65 + posicao);
+
+          const textoAlt = document.createElement('span');
+          textoAlt.className = 'texto-alt';
+          textoAlt.textContent = texto;
+
+          botao.appendChild(letra);
+          botao.appendChild(textoAlt);
+          botao.addEventListener('click', () => responder(posicao));
+          return botao;
+        }),
+      );
+    }
+
+    function responder(posicao: number) {
+      if (!atual || respondendo) return;
+      respondendo = true;
+
+      const palpite = atual;
+      const acertou = posicao === palpite.correta;
+      const botoes = [...el.alternativas.querySelectorAll<HTMLButtonElement>('.alt')];
+
+      botoes.forEach((botao, i) => {
+        botao.disabled = true;
+        const letra = botao.querySelector('.letra')!;
+        if (i === palpite.correta) {
+          botao.classList.add('certa');
+          letra.textContent = '✓';
+        } else if (i === posicao) {
+          botao.classList.add('errada');
+          letra.textContent = '✕';
+        }
+      });
+
+      vistos = [...vistos, palpite.id].slice(-300);
+      guardar(CHAVE_VISTOS, vistos);
+      placar += 1;
+      guardar(CHAVE_PLACAR, placar);
+      atualizarPlacar();
+
+      el.veredito.textContent = vereditoDe(acertou, palpite.taxaAcerto);
+      el.valorReal.textContent = `O valor real é ${palpite.valorReal}.`;
+      el.explicacao.textContent = palpite.explicacao ?? '';
+      el.depois.hidden = false;
+
+      abastecer();
+      setTimeout(avancar, PAUSA_DO_REVEAL);
+
+      // Contabiliza sem travar a tela — mesmo padrao do Quiz.
+      void fetch('/api/adivinhe/palpite', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: palpite.id, acertou }),
+        keepalive: true,
+      }).catch(() => {
+        /* resposta perdida vale menos que interromper o loop */
+      });
+    }
+
+    function vereditoDe(acertou: boolean, taxa: number | null): string {
+      if (taxa === null) return acertou ? 'Você acertou! 🎯' : 'Não foi dessa vez.';
+
+      const pct = Math.round(taxa * 100);
+      if (acertou) {
+        return pct <= 35 ? `Acertou — e só ${pct}% chegam nesse valor. 🔥` : `Acertou! ${pct}% chegam nesse valor.`;
+      }
+      return `Não foi dessa vez. ${pct}% acertam esse.`;
+    }
+
+    function atualizarPlacar() {
+      el.placar.textContent = placar === 1 ? '1 palpite' : `${placar} palpites`;
+    }
+  }
+</script>
+
+<style is:global>
+  /* Global pelo mesmo motivo do Quiz: os botoes sao sempre recriados via
+     `document.createElement`, mesmo o primeiro — elemento criado por JS nao
+     ganha o atributo de escopo do Astro. Seguro aqui porque a pagina e MPA. */
+  .vazio {
+    padding: 4rem 0;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: center;
+  }
+
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .voltar {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .placar {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .categoria {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .pergunta {
+    margin: 0.4rem 0 1.5rem;
+    color: #fff;
+    font-size: clamp(1.4rem, 6.5vw, 1.9rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .alternativas {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .alt {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-height: var(--tap);
+    padding: 0.85rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--cor) 85%, black 12%);
+    border-radius: var(--radius-sm);
+    background: var(--cor);
+    box-shadow: 0 0.5rem 1.1rem -0.7rem color-mix(in srgb, var(--cor) 80%, black 15%);
+    color: #fff;
+    font-size: 1.02rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .alt:active:not(:disabled) {
+    transform: scale(0.99);
+  }
+
+  .alt:not(:disabled):hover {
+    box-shadow: 0 0.6rem 1.3rem -0.6rem color-mix(in srgb, var(--cor) 90%, black 10%);
+  }
+
+  .letra {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--cor);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .texto-alt {
+    flex: 1;
+  }
+
+  .alt:disabled {
+    cursor: default;
+  }
+
+  .alt.certa {
+    --cor: var(--c);
+  }
+
+  .alt.errada {
+    --cor: var(--a);
+  }
+
+  .depois {
+    padding-top: 1.4rem;
+    animation: subir 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .veredito {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+
+  .valor-real {
+    padding-top: 0.3rem;
+    color: #fff;
+    font-size: 0.98rem;
+    font-weight: 700;
+  }
+
+  .explicacao {
+    padding-top: 0.35rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .mais {
+    display: block;
+    padding-top: 2.5rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+  }
+</style>

@@ -1,6 +1,7 @@
 import { D1RateLimitReservationStore } from './api-rate-limit-d1';
 import { Gemini } from './gemini';
 import { gerarDilemas, type ResultadoGeracao } from './geradores/dilemas';
+import { gerarPalpites } from './geradores/palpites';
 import { gerarPerguntas } from './geradores/quiz';
 import { createRateLimitedFetch } from './rate-limited-fetch';
 
@@ -28,10 +29,12 @@ interface Ambiente {
 
 const DILEMAS_POR_EXECUCAO = 8;
 const PERGUNTAS_POR_EXECUCAO = 5;
+const PALPITES_POR_EXECUCAO = 5;
 
 interface Relatorio {
   dilemas: ResultadoGeracao;
   quiz: (ResultadoGeracao & { tema: string })[];
+  palpites: ResultadoGeracao;
 }
 
 /**
@@ -82,7 +85,9 @@ async function executar(env: Ambiente): Promise<Relatorio> {
     });
   }
 
-  return { dilemas, quiz };
+  const palpites = await gerarPalpites(env.DB, gemini, PALPITES_POR_EXECUCAO, statusInicial);
+
+  return { dilemas, quiz, palpites };
 }
 
 /**

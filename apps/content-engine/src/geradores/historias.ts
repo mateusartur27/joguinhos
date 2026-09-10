@@ -77,8 +77,8 @@ Regras:
   — dos 16 finais, nem todos podem ser vitória nem todos derrota, e evite
   concentrar quase todos num só resultado.
 - PONTO SEM VOLTA: existem 8 nós de "última escolha" (o nó cujas duas opções
-  levam direto a um final). Em EXATAMENTE 1 ou 2 desses 8 nós — nunca 0,
-  nunca 3 ou mais, conte antes de responder — as DUAS opções finais desse nó
+  levam direto a um final). Em 3 a 5 desses 8 nós — nunca menos de 3, nunca
+  mais de 5, conte antes de responder — as DUAS opções finais desse nó
   resultam em "derrota". Isso significa que o destino já foi selado na
   escolha ANTERIOR (a terceira), mesmo a pessoa não sabendo ainda: ao entrar
   nesse nó ela já perdeu, só muda a FORMA como perde. Não anuncie isso na
@@ -175,12 +175,14 @@ export async function gerarHistoria(
     return { gerados: 1, inseridos: 0, descartados: 1 };
   }
 
-  // A instrucao pede 1 ou 2 "pontos sem volta", mas testado em producao ela
-  // sozinha nao segura esse numero de forma confiavel (saiu de 1 a 5 por
-  // historia). Conta de verdade e descarta fora da faixa, em vez de confiar
-  // so no prompt.
+  // A instrucao pede 3 a 5 "pontos sem volta", mas sozinha nao segura esse
+  // numero de forma confiavel (a faixa 1-2 testada antes ja saiu de 1 a 5
+  // por historia). Conta de verdade e descarta fora da faixa, em vez de
+  // confiar so no prompt. Faixa subiu de 1-2 pra 3-5 a pedido do usuario,
+  // pra testar mais nos ja decididos antes do final (metade a mais da
+  // arvore da ultima escolha vira derrota certa em vez de aberta).
   const pontosSemVolta = contarPontosSemVolta(resposta);
-  if (pontosSemVolta < 1 || pontosSemVolta > 2) {
+  if (pontosSemVolta < 3 || pontosSemVolta > 5) {
     return { gerados: 1, inseridos: 0, descartados: 1 };
   }
 

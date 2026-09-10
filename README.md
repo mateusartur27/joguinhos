@@ -90,18 +90,21 @@ esbarra numa resposta "certa" e outra "errada", igual um teste de múltipla
 escolha. Uma tentativa de resolver isso variando o tom das opções foi
 revertida por não atacar o problema real.
 
-A ideia que ficou foi outra: **ponto sem volta**. Em 1 ou 2 dos 4 nós da
-terceira escolha (a penúltima), as duas continuações finais já são derrota
-— a pessoa perdeu ao chegar ali, só muda a forma como perde. A cena não
-anuncia isso (sem "não há mais saída"), então a tensão continua normal; só
-ao ver que perdeu de qualquer jeito é que dá pra olhar pra trás e perceber
-que uma escolha anterior já tinha selado aquele caminho. Isso quebra o
-binário "essa opção certa, essa errada" de um jeito diferente: em vez de
-toda escolha pesar igual até o final, algumas escolhas (as arriscadas) já
-resolvem o jogo mais cedo, e a pessoa só descobre depois. A instrução pede
-que isso aconteça em consequência lógica do caminho (não arbitrário) e sem
-virar um padrão reconhecível de história pra história — nem óbvio demais,
-nem aleatório demais.
+A ideia que ficou foi outra: **ponto sem volta**. Dos 8 nós de última
+escolha (o nó cujas duas opções levam direto a um final), 1 ou 2 têm as
+DUAS opções finais como derrota — a escolha anterior (a terceira) já selou
+o destino, a pessoa só descobre ao chegar lá. A cena não anuncia isso (sem
+"não há mais saída"), então a tensão continua normal. Isso quebra o binário
+"essa opção certa, essa errada" de um jeito diferente: em vez de toda
+escolha pesar igual até o final, algumas escolhas arriscadas já resolvem o
+jogo mais cedo, e a pessoa só descobre depois.
+
+A instrução sozinha não segurou a quantidade de forma confiável — testado
+em produção, saiu de 1 a 5 pontos sem volta por história (uma chegou a ter
+5 dos 8 nós finais já decididos, bem mais que o pedido). Por isso a
+contagem é validada no código (`contarPontosSemVolta` em
+`geradores/historias.ts`), não só confiada ao prompt: fora da faixa 1-2, a
+história é descartada como qualquer outra falha de validação.
 
 É um jogo só, não um por história: a pessoa escolhe o **tema** em
 `/historia` e joga a história daquele tema **de hoje** — mesma seleção

@@ -76,18 +76,16 @@ Regras:
   a situação piora ou ela fica presa/perdida. Use os dois de forma equilibrada
   — dos 16 finais, nem todos podem ser vitória nem todos derrota, e evite
   concentrar quase todos num só resultado.
-- PONTO SEM VOLTA: nem toda terceira escolha (a que vem antes da última)
-  precisa deixar o resultado em aberto. Em 1 ou 2 dos 4 nós dessa terceira
-  escolha (nunca 0, nunca mais que 2), transforme o nó num ponto sem volta —
-  as DUAS continuações finais que saem dali são "derrota", mudando só a
-  FORMA como a pessoa perde, não SE ela perde. Não anuncie isso na cena
-  (nada de "não há mais saída" ou parecido): a cena mantém tensão normal e
-  as duas opções parecem escolhas de verdade, e só ao ver que perdeu de
-  qualquer jeito a pessoa percebe, olhando pra trás, que uma escolha
-  anterior já tinha selado aquele caminho. O ponto sem volta precisa ser
-  consequência lógica de decisões arriscadas já tomadas no caminho até
-  ali — não pode parecer arbitrário, nem repetir sempre o mesmo padrão
-  reconhecível de história pra história.
+- PONTO SEM VOLTA: existem 8 nós de "última escolha" (o nó cujas duas opções
+  levam direto a um final). Em EXATAMENTE 1 ou 2 desses 8 nós — nunca 0,
+  nunca 3 ou mais, conte antes de responder — as DUAS opções finais desse nó
+  resultam em "derrota". Isso significa que o destino já foi selado na
+  escolha ANTERIOR (a terceira), mesmo a pessoa não sabendo ainda: ao entrar
+  nesse nó ela já perdeu, só muda a FORMA como perde. Não anuncie isso na
+  cena (nada de "não há mais saída" ou parecido) — a cena mantém tensão
+  normal e as duas opções parecem escolhas de verdade. O ponto sem volta
+  precisa ser consequência lógica de uma decisão arriscada já tomada no
+  caminho até ali, não parecer arbitrário.
 - Os 16 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
   final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,
@@ -177,6 +175,15 @@ export async function gerarHistoria(
     return { gerados: 1, inseridos: 0, descartados: 1 };
   }
 
+  // A instrucao pede 1 ou 2 "pontos sem volta", mas testado em producao ela
+  // sozinha nao segura esse numero de forma confiavel (saiu de 1 a 5 por
+  // historia). Conta de verdade e descarta fora da faixa, em vez de confiar
+  // so no prompt.
+  const pontosSemVolta = contarPontosSemVolta(resposta);
+  if (pontosSemVolta < 1 || pontosSemVolta > 2) {
+    return { gerados: 1, inseridos: 0, descartados: 1 };
+  }
+
   const duplicado = await db
     .prepare('SELECT 1 FROM stories WHERE lower(title) = lower(?)')
     .bind(resposta.titulo.trim())
@@ -256,6 +263,23 @@ async function slugDisponivel(db: D1Database, titulo: string): Promise<string> {
     if (!existe) return slug;
     slug = `${base}-${sufixo}`;
   }
+}
+
+/**
+ * Conta os "pontos sem volta": nos de ultima escolha (cujas duas opcoes
+ * levam direto a um final) em que os dois finais sao "derrota". Percorre a
+ * arvore inteira somando ocorrencias em qualquer profundidade — so um no
+ * final (`!('opcaoA' in no)`) nao conta nada e para a recursao.
+ */
+function contarPontosSemVolta(no: NoFinalGerado | NoComOpcoesGerado): number {
+  if (!('opcaoA' in no)) return 0;
+
+  const ehFinalDerrota = (filho: NoFinalGerado | NoComOpcoesGerado): boolean =>
+    !('opcaoA' in filho) && filho.resultado === 'derrota';
+
+  const esteNo = ehFinalDerrota(no.opcaoA.proximo) && ehFinalDerrota(no.opcaoB.proximo) ? 1 : 0;
+
+  return esteNo + contarPontosSemVolta(no.opcaoA.proximo) + contarPontosSemVolta(no.opcaoB.proximo);
 }
 
 /** Confere que a arvore tem exatamente a profundidade esperada e nada vazio. */

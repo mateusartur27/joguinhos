@@ -4,19 +4,22 @@ import type { ResultadoGeracao } from './dilemas';
 /**
  * Quantos niveis de escolha existem antes de um final.
  *
- * A arvore tem 5 CAMADAS DE NO (raiz, nivel 2, nivel 3, nivel 4, final), mas
- * so 4 delas tem escolha — o final e so texto + resultado. E essa contagem
- * de "escolhas restantes", nao de "camadas restantes", que `validaArvore`
- * precisa, senao ela desce um nivel a mais do que o schema realmente tem e
- * rejeita toda arvore correta (bug real, pego revisando o primeiro lote:
- * ver README).
+ * A arvore tem 6 CAMADAS DE NO (raiz, nivel 2, nivel 3, nivel 4, nivel 5,
+ * final), mas so 5 delas tem escolha — o final e so texto + resultado. E
+ * essa contagem de "escolhas restantes", nao de "camadas restantes", que
+ * `validaArvore` precisa, senao ela desce um nivel a mais do que o schema
+ * realmente tem e rejeita toda arvore correta (bug real, pego revisando o
+ * primeiro lote: ver README).
  *
- * Subiu de 3 para 4 a pedido do usuario ("10 rodadas") — arvore binaria
- * pura em 10 niveis geraria 512 finais numa chamada so (schema gigante,
- * custo e qualidade em risco), entao o usuario topou reduzir para 5 rodadas
- * (16 finais) mantendo a arvore binaria pura em vez de convergir caminhos.
+ * Subiu de 3 para 4 a pedido do usuario ("10 rodadas") — arvore binaria pura
+ * em 10 niveis geraria 512 finais numa chamada so (schema gigante, custo e
+ * qualidade em risco), entao o usuario topou reduzir para "5 rodadas"
+ * mantendo a arvore binaria pura em vez de convergir caminhos. Na pratica
+ * aquele acerto virou 4 (a tela de final foi contada como uma "rodada" sem
+ * ser uma escolha de verdade) — o usuario reportou "so 4 escolhas" e a
+ * intencao original era 5 escolhas reais, corrigido para 5 aqui (32 finais).
  */
-const PROFUNDIDADE_DE_ESCOLHAS = 4;
+const PROFUNDIDADE_DE_ESCOLHAS = 5;
 
 export const CATEGORIAS = [
   'Mistério',
@@ -50,12 +53,13 @@ function instrucao(categoria: Categoria): string {
 microjogos, na categoria "${categoria}": a pessoa lê uma cena e escolhe entre
 duas opções, até chegar a um final classificado como vitória ou derrota.
 
-Estrutura obrigatória (sempre profundidade 5, sempre binário):
+Estrutura obrigatória (sempre 5 escolhas antes do final, sempre binário):
 - Cena raiz: situação inicial, com exatamente 2 opções.
 - Cada opção leva a uma segunda cena, também com exatamente 2 opções.
 - Cada uma dessas leva a uma terceira cena, também com exatamente 2 opções.
 - Cada uma dessas leva a uma quarta cena, também com exatamente 2 opções.
-- Cada uma dessas leva a um final (16 finais no total).
+- Cada uma dessas leva a uma quinta cena, também com exatamente 2 opções.
+- Cada uma dessas leva a um final (32 finais no total).
 
 Regras:
 - Português do Brasil, coloquial, no tempo presente ou passado recente.
@@ -66,12 +70,18 @@ Regras:
 - Terror e Crime pedem tensão e sugestão, NUNCA descrição gráfica de
   violência, sangue ou ferimento — o susto vem da atmosfera, não de detalhe
   explícito. Isso vale mesmo puxando o gênero ao limite.
+- IMPORTANTE: nunca deixe uma opção "soar" como a certa e a outra como a
+  errada. Varie de propósito — em alguns pontos a escolha mais cautelosa leva
+  à vitória e a mais ousada à derrota, em outros é o oposto. A pessoa não
+  pode conseguir prever o final só pelo tom do rótulo da opção; o resultado
+  tem que depender do caminho todo, não parecer um teste de "escolha a
+  resposta certa".
 - Cada final tem um "resultado": "vitoria" quando a pessoa sobrevive, consegue
   o que queria ou resolve a situação a seu favor; "derrota" quando ela falha,
   a situação piora ou ela fica presa/perdida. Use os dois de forma equilibrada
-  — dos 16 finais, nem todos podem ser vitória nem todos derrota, e evite
+  — dos 32 finais, nem todos podem ser vitória nem todos derrota, e evite
   concentrar quase todos num só resultado.
-- Os 16 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
+- Os 32 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
   final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,
   religião ou ofensa a pessoas reais.
@@ -110,7 +120,8 @@ function noComOpcoes(proximo: Record<string, unknown>) {
   };
 }
 
-const NO_NIVEL_4 = noComOpcoes(NO_FINAL);
+const NO_NIVEL_5 = noComOpcoes(NO_FINAL);
+const NO_NIVEL_4 = noComOpcoes(NO_NIVEL_5);
 const NO_NIVEL_3 = noComOpcoes(NO_NIVEL_4);
 const NO_NIVEL_2 = noComOpcoes(NO_NIVEL_3);
 

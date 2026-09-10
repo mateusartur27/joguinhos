@@ -33,7 +33,7 @@ export interface Historia {
   cor: string;
   coresCartoes: string[];
   raizId: number;
-  /** Quantas cenas ate um final, incluindo a raiz — varia por historia. */
+  /** Quantas cenas de escolha ate o final (nao conta o final) — varia por historia. */
   profundidadeTotal: number;
   nos: NoHistoria[];
 }
@@ -112,23 +112,25 @@ export async function buscarHistoria(db: D1Database, slug: string): Promise<Hist
 }
 
 /**
- * Conta cenas da raiz ate um final, seguindo so um caminho (A, ou B se A nao
- * existir). A arvore e sempre uniforme em profundidade — todo caminho tem o
- * mesmo tamanho — entao um caminho so basta.
+ * Conta cenas de escolha da raiz ate o final, seguindo so um caminho (A, ou
+ * B se A nao existir) — a arvore e sempre uniforme em profundidade, entao um
+ * caminho so basta. O final NAO entra na contagem: ele nao e uma escolha, e
+ * a UI mostra "Final" no lugar de um numero de cena ([slug].astro) — contar
+ * o final aqui fazia o site anunciar "Cena 4 de 5" e depois pular direto pra
+ * "Final" sem nunca mostrar uma "Cena 5", o que pareceu um erro de contagem.
  */
 function calcularProfundidade(nos: NoHistoria[], raizId: number): number {
   const porId = new Map(nos.map((no) => [no.id, no]));
   let atual = porId.get(raizId);
-  let profundidade = 0;
+  let cenas = 0;
 
-  while (atual) {
-    profundidade += 1;
-    if (atual.ehFinal) break;
+  while (atual && !atual.ehFinal) {
+    cenas += 1;
     const proximoId = atual.opcaoA?.proximoId ?? atual.opcaoB?.proximoId;
     atual = proximoId === undefined ? undefined : porId.get(proximoId);
   }
 
-  return profundidade;
+  return cenas;
 }
 
 export interface CategoriaHistoria {

@@ -83,13 +83,13 @@ não. Ficou em 4 escolhas / 16 finais até existir uma forma de representar a
 árvore sem essa explosão de aninhamento (schema recursivo via `$ref` é a
 via mais provável, mas não testada nesta API de Interactions).
 
-Depois de jogar, o usuário notou que a interatividade parecia rasa — dava
-pra sentir qual opção "soava certa" e simplesmente seguir aquela até o
-final, o que deixa a história parecendo um teste de resposta certa/errada
-em vez de ramificação de verdade. A instrução do gerador agora pede
-explicitamente para variar: em alguns pontos a escolha cautelosa leva à
-vitória, em outros à derrota, e vice-versa — o resultado depende do caminho
-completo, não do tom do rótulo de cada opção isolada.
+Depois de jogar, o usuário achou a interatividade rasa: não é sobre o rótulo
+de uma opção "soar" certo ou errado, é que a estrutura toda é binária
+vitória/derrota — não importa o caminho, no fim das contas você sempre
+esbarra numa resposta "certa" e outra "errada", igual um teste de múltipla
+escolha. Uma tentativa de resolver isso variando o tom das opções foi
+revertida por não atacar o problema real (ver histórico do commit). Ainda
+em aberto: bolar uma estrutura que não force esse binário no final.
 
 É um jogo só, não um por história: a pessoa escolhe o **tema** em
 `/historia` e joga a história daquele tema **de hoje** — mesma seleção

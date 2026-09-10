@@ -71,12 +71,6 @@ Regras:
 - Terror e Crime pedem tensão e sugestão, NUNCA descrição gráfica de
   violência, sangue ou ferimento — o susto vem da atmosfera, não de detalhe
   explícito. Isso vale mesmo puxando o gênero ao limite.
-- IMPORTANTE: nunca deixe uma opção "soar" como a certa e a outra como a
-  errada. Varie de propósito — em alguns pontos a escolha mais cautelosa leva
-  à vitória e a mais ousada à derrota, em outros é o oposto. A pessoa não
-  pode conseguir prever o final só pelo tom do rótulo da opção; o resultado
-  tem que depender do caminho todo, não parecer um teste de "escolha a
-  resposta certa".
 - Cada final tem um "resultado": "vitoria" quando a pessoa sobrevive, consegue
   o que queria ou resolve a situação a seu favor; "derrota" quando ela falha,
   a situação piora ou ela fica presa/perdida. Use os dois de forma equilibrada

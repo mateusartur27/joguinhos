@@ -76,6 +76,18 @@ Regras:
   a situação piora ou ela fica presa/perdida. Use os dois de forma equilibrada
   — dos 16 finais, nem todos podem ser vitória nem todos derrota, e evite
   concentrar quase todos num só resultado.
+- PONTO SEM VOLTA: nem toda terceira escolha (a que vem antes da última)
+  precisa deixar o resultado em aberto. Em 1 ou 2 dos 4 nós dessa terceira
+  escolha (nunca 0, nunca mais que 2), transforme o nó num ponto sem volta —
+  as DUAS continuações finais que saem dali são "derrota", mudando só a
+  FORMA como a pessoa perde, não SE ela perde. Não anuncie isso na cena
+  (nada de "não há mais saída" ou parecido): a cena mantém tensão normal e
+  as duas opções parecem escolhas de verdade, e só ao ver que perdeu de
+  qualquer jeito a pessoa percebe, olhando pra trás, que uma escolha
+  anterior já tinha selado aquele caminho. O ponto sem volta precisa ser
+  consequência lógica de decisões arriscadas já tomadas no caminho até
+  ali — não pode parecer arbitrário, nem repetir sempre o mesmo padrão
+  reconhecível de história pra história.
 - Os 16 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
   final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,

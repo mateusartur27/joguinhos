@@ -88,8 +88,20 @@ de uma opção "soar" certo ou errado, é que a estrutura toda é binária
 vitória/derrota — não importa o caminho, no fim das contas você sempre
 esbarra numa resposta "certa" e outra "errada", igual um teste de múltipla
 escolha. Uma tentativa de resolver isso variando o tom das opções foi
-revertida por não atacar o problema real (ver histórico do commit). Ainda
-em aberto: bolar uma estrutura que não force esse binário no final.
+revertida por não atacar o problema real.
+
+A ideia que ficou foi outra: **ponto sem volta**. Em 1 ou 2 dos 4 nós da
+terceira escolha (a penúltima), as duas continuações finais já são derrota
+— a pessoa perdeu ao chegar ali, só muda a forma como perde. A cena não
+anuncia isso (sem "não há mais saída"), então a tensão continua normal; só
+ao ver que perdeu de qualquer jeito é que dá pra olhar pra trás e perceber
+que uma escolha anterior já tinha selado aquele caminho. Isso quebra o
+binário "essa opção certa, essa errada" de um jeito diferente: em vez de
+toda escolha pesar igual até o final, algumas escolhas (as arriscadas) já
+resolvem o jogo mais cedo, e a pessoa só descobre depois. A instrução pede
+que isso aconteça em consequência lógica do caminho (não arbitrário) e sem
+virar um padrão reconhecível de história pra história — nem óbvio demais,
+nem aleatório demais.
 
 É um jogo só, não um por história: a pessoa escolhe o **tema** em
 `/historia` e joga a história daquele tema **de hoje** — mesma seleção

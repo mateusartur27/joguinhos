@@ -28,7 +28,7 @@ saem daí e valem em todo o código:
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 | Adivinhe Antes de Revelar | `/adivinhe` | Palpite de quantidade, revela o valor real e a taxa de acerto |
 | Jogo Diário | `/diario` | Um desafio igual pra todo mundo por dia, 5 pistas, palpite em texto livre |
-| História Interativa | `/historia`, `/historia/[categoria]` | Escolhe o tema, joga a história de hoje daquele tema — 5 escolhas, 32 finais, vitória ou derrota |
+| História Interativa | `/historia`, `/historia/[categoria]` | Escolhe o tema, joga a história de hoje daquele tema — 4 escolhas, 16 finais, vitória ou derrota |
 
 Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
 `localStorage` do navegador e mandando-os de volta como exclusão na próxima
@@ -61,18 +61,27 @@ História Interativa é o primeiro conteúdo do site em **árvore**, não lista
 plana: cada nó tem até duas escolhas apontando para outro nó
 (`choice_a_next_id`/`choice_b_next_id`, auto-referência dentro de
 `story_nodes`), até chegar num final (`is_ending`, com `outcome` = "vitoria"
-ou "derrota"). Toda história tem **5 escolhas** antes do final — raiz + 4
-níveis de escolha adicionais = 32 finais — decisão deliberada para manter o
-gerador e a revisão simples.
+ou "derrota"). Toda história tem **4 escolhas** antes do final — raiz + 3
+níveis de escolha adicionais = 16 finais.
 
 Pediram 10 rodadas inicialmente. Árvore binária pura em 10 níveis geraria
 512 finais únicos numa chamada só (raiz + 9 níveis de escolha) — schema
 gigante, custo alto e risco real de qualidade/token numa história só. A
 alternativa seria convergir caminhos (várias escolhas levando ao mesmo nó
 adiante), mas o usuário preferiu manter árvore binária pura e reduzir a
-profundidade em vez disso. A primeira versão desse ajuste saiu com 4
-escolhas (a tela de final foi contada por engano como uma "rodada" a mais) —
-corrigido para as 5 escolhas reais pedidas, 32 finais.
+profundidade em vez disso, pra 5 rodadas — só que a tela de final foi
+contada por engano como uma "rodada" a mais, resultando em 4 escolhas reais
+em vez de 5.
+
+Tentativa de corrigir para 5 escolhas reais (32 finais): a API do Gemini
+rejeitou a chamada inteira com HTTP 400 antes de gerar qualquer coisa. O
+schema de saída estruturada (`response_format.schema`) tem um **limite
+rígido de profundidade de aninhamento**, e a árvore é montada aninhando
+literalmente um `noComOpcoes(...)` dentro do outro (sem `$ref`/schema
+recursivo, decisão original de simplicidade) — 4 níveis cabe no limite, 5
+não. Ficou em 4 escolhas / 16 finais até existir uma forma de representar a
+árvore sem essa explosão de aninhamento (schema recursivo via `$ref` é a
+via mais provável, mas não testada nesta API de Interactions).
 
 Depois de jogar, o usuário notou que a interatividade parecia rasa — dava
 pra sentir qual opção "soava certa" e simplesmente seguir aquela até o

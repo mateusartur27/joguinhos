@@ -30,6 +30,11 @@ Regras:
 - Nada de conteúdo sexual, violência gráfica, drogas, automutilação, política
   partidária, religião ou ofensa a pessoas reais. O site exibe publicidade e
   esse tipo de conteúdo derruba a conta.
+- Deixe cada dilema carregar, por trás da escolha, algum reflexo real sobre a
+  vida ou sobre como as pessoas decidem — implícito na própria tensão da
+  escolha, nunca como frase de moral separada ou explicação depois. Se a
+  pessoa só perceber esse reflexo parando pra pensar depois de escolher, é
+  o efeito certo; se o dilema parecer estar "ensinando algo", errou a mão.
 - Não repita nem parafraseie dilemas que já existem.`;
 
 const SCHEMA = {

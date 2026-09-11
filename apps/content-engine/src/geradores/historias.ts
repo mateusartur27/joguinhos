@@ -105,6 +105,12 @@ Regras:
   diferentes entre si (não apenas o mesmo final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,
   religião ou ofensa a pessoas reais.
+- Deixe a história carregar, de forma implícita, algum aprendizado real
+  sobre a vida — coragem, confiança, ganância, medo, orgulho, o que fizer
+  sentido pro tom de "${categoria}" — nunca como moral explícita no texto
+  nem como o ponto principal da história. É pano de fundo, não recado: a
+  trama e o susto/riso/suspense continuam sendo o que a pessoa está ali pra
+  jogar; o aprendizado é algo que só se nota, se notar, depois de terminar.
 - Não repita nem parafraseie histórias que já existem.`;
 }
 

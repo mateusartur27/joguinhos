@@ -38,6 +38,16 @@ tinha 14 e a rodada sorteia 8 — "jogar de novo" caía quase sempre nas mesmas)
 repetia quase todo "jogar de novo". Se a exclusão esgotar o acervo do tema, a
 função cai para sorteio sem exclusão — repetir é melhor que tela vazia.
 
+Escolhas ganhou uma instrução de tom: cada dilema deve carregar, por trás
+da escolha, algum reflexo real sobre a vida ou sobre como as pessoas
+decidem — implícito na tensão do próprio dilema, nunca como frase de moral
+separada (mesma ideia aplicada em História Interativa, ver "aprendizado
+implícito" abaixo). Pedido do usuário: "algo na vida da pessoa, como um
+aprendizado, não como a trama principal" — e depois, "não é pra ser uma
+frase a mais, é pra ser implícito durante os jogos". Não é algo
+verificável por contagem (como o ponto sem volta) — fica só na instrução,
+sem checagem de código.
+
 Adivinhe Antes de Revelar reaproveita os dois padrões ao mesmo tempo: fluxo
 contínuo sem rodada fixa (como Escolhas) com botões de múltipla escolha
 (como Quiz). A instrução do gerador (`geradores/palpites.ts`) proíbe fato
@@ -178,6 +188,21 @@ história fora da faixa, mas o usuário pediu pra reforçar a instrução em vez
 disso e parar de descartar por essa causa — a contagem continua calculada e
 vai pro log (`console.log` em `gerarHistoria`) só pra acompanhamento manual,
 nunca bloqueia a inserção.
+
+**Aprendizado implícito**: a instrução também pede que a história carregue,
+de forma implícita, algum aprendizado real sobre a vida (coragem, confiança,
+ganância, medo...) — nunca como moral explícita no texto, nunca como o
+ponto principal. Pedido do usuário: "acrescentasse algo na vida da pessoa,
+como um aprendizado, não como a trama principal, pra não estragar os
+jogos" — e depois, quando perguntado onde isso deveria aparecer na tela,
+"não é pra ser uma frase a mais, é pra ser implícito durante os jogos". Sem
+como validar isso por código (não é uma contagem, é qualidade de escrita);
+fica só na instrução, revisado manualmente como qualquer lote novo. Mesma
+ideia aplicada em Escolhas (`geradores/dilemas.ts`) — os outros geradores
+(Quiz, Adivinhe, Jogo Diário) ficaram de fora por enquanto: já são formatos
+de fato explícito (a pergunta/pista já É o aprendizado), e forçar essa
+instrução ali arriscava diluir a precisão factual que este projeto já
+ajustou com cuidado (thinking_level, validação de índice em Adivinhe).
 
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do

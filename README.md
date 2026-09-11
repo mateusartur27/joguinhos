@@ -45,6 +45,54 @@ volátil (preço, cotação, população que muda todo ano) pelo mesmo motivo do
 quiz — aqui o "valor real" é o próprio conteúdo do reveal, então errar o
 número quebra o jogo de um jeito mais direto que uma alternativa errada.
 
+Teste isolado (fora do pipeline, sem tocar D1) achou um bug real num lote no
+padrão da API (`thinking_level` não setado): `indiceCorreto` apontava pra
+"12" enquanto `valorReal` dizia "10 países" — dois campos que deveriam
+concordar e não concordavam, e a validação antiga nunca cruzava um com o
+outro. `valido()` ganhou `indiceMaisProximo()`: acha qual alternativa tem o
+número mais próximo de `valorReal` (aproximado, não exato — alternativas
+são faixas arredondadas, `valorReal` é o valor preciso) e rejeita se não
+bater com `indiceCorreto`. O mesmo teste não reproduziu o erro em 2 amostras
+com `thinking_level: 'medium'`, então o gerador também subiu pra medium —
+evidência real (achado, não hipotético), mas amostra pequena.
+
+## Calibração de `thinking_level` por gerador
+
+Nenhum gerador tinha `thinking_level` setado até essa análise — todos
+rodavam no padrão do `gemini-3.5-flash-lite` (nível mais baixo, "minimal").
+Testado isolado (fora do pipeline, sem tocar D1) nos 5 geradores, minimal vs
+medium vs high, comparando taxa de validade estrutural e revisando fatos à
+mão (a única forma de checar correção factual — não é automatizável):
+
+- **História Interativa → `high`**: único gerador com uma exigência de
+  **contagem exata** (3 a 5 pontos sem volta de 8 nós). Teste isolado: high
+  acertou 4/4 contra 3/4 no padrão; em produção, a taxa de aprovação subiu
+  de ~43% pra 7/7 categorias na primeira execução com `high` ligado.
+  Evidência forte, motivo específico (contagem, não só texto).
+- **Adivinhe (palpites) → `medium`**: achou um bug de consistência real no
+  padrão (ver acima), não reproduzido em medium. Evidência real mas amostra
+  pequena (2 de cada; `high` não testado — a API respondeu "alta demanda"
+  duas vezes nesse teste).
+- **Quiz → sem mudança (minimal)**: factualmente correto nas amostras dos 3
+  níveis testados (futebol — datas, contagens, sedes de Copa, fundação da
+  FIFA, todos corretos). Apesar do histórico de ter inventado um apelido
+  antes (ver acima), não achei evidência nessa rodada de que o padrão falha
+  mais que os níveis mais altos — sem evidência, não subiu.
+- **Jogo Diário (desafios-diários) → sem mudança (minimal)**: 3/3 válidos em
+  todos os níveis, fatos checados à mão sem erro claro. Sem evidência de
+  ganho.
+- **Escolhas (dilemas) → sem mudança (minimal)**: tarefa sem checagem
+  factual (dilema é opinião, não fato) e sem exigência de contagem — 8/8
+  válidos em todos os níveis, qualidade/criatividade equivalente. Subir o
+  nível aqui seria pagar latência sem ganho.
+
+Custo: cada nível acima de minimal aproximadamente dobra a latência por
+chamada (thinking tokens contam como saída). Aceitável em todos os casos
+porque a geração é assíncrona (cron diário ou disparo manual), nunca
+bloqueia usuário — mas é o motivo de não subir tudo pra `high` "por via das
+dúvidas": sem uma exigência concreta (contagem, ou um bug real encontrado),
+é custo sem benefício demonstrado.
+
 Jogo Diário é o único jogo **sem sorteio**: todo mundo que acessa no mesmo
 dia recebe o mesmo desafio (`desafioDeHoje` em `lib/db/diario.ts` pega o
 índice pelo dia UTC, `indiceDoDia = hoje % totalPublicado` — determinístico

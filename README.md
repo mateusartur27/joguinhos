@@ -222,13 +222,20 @@ uma das duas opções era literalmente "analisar dados da torre local"
 (óbvia); Ficção científica: a cena descrevia um campo magnético afetando a
 água do corpo, e uma opção era "reiniciar o gerador" sem nenhuma ligação
 explicada com essa ameaça específica (a outra opção, "acionar escudo",
-ficava obviamente certa por eliminação). A instrução ganhou uma regra
-nova: as DUAS opções precisam ser respostas plausíveis e conectadas à
-MESMA cena — nunca uma resposta técnica óbvia contra uma solta sem nexo —
-e o fato precisa funcionar como ambientação, nunca como pista de como
-resolver a cena. Mesmo problema de fundo do "ponto sem volta" original
-(uma opção soando certa e a outra errada), só que causado dessa vez pelo
-próprio fato, não pelo tom do rótulo.
+ficava obviamente certa por eliminação). Mesmo problema de fundo do "ponto
+sem volta" original (uma opção soando certa e a outra errada), só que
+causado dessa vez pelo próprio fato, não pelo tom do rótulo.
+
+A instrução ganhou uma regra nova: as DUAS opções precisam ser respostas
+plausíveis e conectadas à MESMA cena — nunca uma resposta técnica óbvia
+contra uma solta sem nexo. A primeira versão dessa regra pedia pra tirar
+o fato da jogada inteira (virar só ambientação, sem ligação com nenhuma
+opção) — o usuário sugeriu algo melhor: em vez de tirar a pista de todo
+mundo, dar a MESMA informação pras duas opções, cada uma virando uma
+abordagem real e informada diferente (duas técnicas válidas, vantagens e
+riscos diferentes) em vez de "a resposta óbvia" contra "a solta". Ambientação
+pura sem ligação nenhuma virou o plano B, só quando não dá pra conectar as
+duas sem forçar.
 
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do

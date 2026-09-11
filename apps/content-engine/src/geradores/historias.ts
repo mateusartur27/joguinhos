@@ -126,13 +126,16 @@ Regras:
   o ponto principal da história (a trama e o susto/riso/suspense continuam
   sendo o que a pessoa está ali pra jogar). Só use um fato do qual você
   tenha certeza absoluta — errar um fato apresentado como verdadeiro é
-  pior que não incluir nenhum. CUIDADO: um fato bem colocado não pode virar
-  dica de qual opção é a certa — se ele deixa uma opção obviamente "a
-  resposta inteligente" (ex. real, rejeitado: a cena explica que dados de
-  antena revelam a localização de um celular, e uma das opções literalmente
-  é "analisar dados da antena") contra outra sem nexo com a cena, isso
-  quebra a regra das DUAS opções plausíveis (ver acima). O fato entra como
-  contexto/ambientação da cena, nunca como pista de como resolvê-la.
+  pior que não incluir nenhum. CUIDADO: se o fato sugerir uma forma de agir
+  na cena, essa sugestão precisa valer pras DUAS opções, nunca só pra uma
+  (ex. real, rejeitado: a cena explica que dados de antena revelam a
+  localização de um celular, e só uma das opções usa esse dado — "analisar
+  dados da antena" —, deixando a outra, "procurar vestígios físicos", sem
+  nexo nenhum com o que acabou de ser dito). Prefira dar às DUAS opções uma
+  abordagem real e informada pra mesma situação — duas técnicas ou ideias
+  válidas, com vantagens e riscos diferentes — em vez de uma "resposta
+  óbvia" contra uma solta. Se não der pra fazer isso sem forçar, aí sim
+  deixe o fato como pura ambientação, sem ligação com nenhuma opção.
 - Não repita nem parafraseie histórias que já existem.`;
 }
 

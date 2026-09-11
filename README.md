@@ -28,7 +28,7 @@ saem daí e valem em todo o código:
 | Quiz rápido | `/quiz/[tema]` | 8 perguntas, feedback imediato, comparação com a média |
 | Adivinhe Antes de Revelar | `/adivinhe` | Palpite de quantidade, revela o valor real e a taxa de acerto |
 | Jogo Diário | `/diario` | Um desafio igual pra todo mundo por dia, 5 pistas, palpite em texto livre |
-| História Interativa | `/historia`, `/historia/[categoria]` | Escolhe o tema, joga a história de hoje daquele tema — 4 escolhas, 16 finais, vitória ou derrota |
+| História Interativa | `/historia`, `/historia/[categoria]` | Escolhe o tema, joga a história de hoje daquele tema — até 4 escolhas, 11 a 13 finais, vitória ou derrota |
 
 Quiz e Escolhas evitam repetir conteúdo já visto guardando os ids no
 `localStorage` do navegador e mandando-os de volta como exclusão na próxima
@@ -109,8 +109,9 @@ História Interativa é o primeiro conteúdo do site em **árvore**, não lista
 plana: cada nó tem até duas escolhas apontando para outro nó
 (`choice_a_next_id`/`choice_b_next_id`, auto-referência dentro de
 `story_nodes`), até chegar num final (`is_ending`, com `outcome` = "vitoria"
-ou "derrota"). Toda história tem **4 escolhas** antes do final — raiz + 3
-níveis de escolha adicionais = 16 finais.
+ou "derrota"). Toda história tem **até 4 escolhas** antes do final — raiz +
+3 níveis de escolha adicionais — mas nem todo caminho chega às 4: ver
+"ponto sem volta" abaixo, que faz alguns caminhos terminarem na terceira.
 
 Pediram 10 rodadas inicialmente. Árvore binária pura em 10 níveis geraria
 512 finais únicos numa chamada só (raiz + 9 níveis de escolha) — schema
@@ -127,9 +128,9 @@ schema de saída estruturada (`response_format.schema`) tem um **limite
 rígido de profundidade de aninhamento**, e a árvore é montada aninhando
 literalmente um `noComOpcoes(...)` dentro do outro (sem `$ref`/schema
 recursivo, decisão original de simplicidade) — 4 níveis cabe no limite, 5
-não. Ficou em 4 escolhas / 16 finais até existir uma forma de representar a
-árvore sem essa explosão de aninhamento (schema recursivo via `$ref` é a
-via mais provável, mas não testada nesta API de Interactions).
+não. Ficou em até 4 escolhas até existir uma forma de representar a árvore
+sem essa explosão de aninhamento (schema recursivo via `$ref` é a via mais
+provável, mas não testada nesta API de Interactions).
 
 Depois de jogar, o usuário achou a interatividade rasa: não é sobre o rótulo
 de uma opção "soar" certo ou errado, é que a estrutura toda é binária
@@ -138,26 +139,45 @@ esbarra numa resposta "certa" e outra "errada", igual um teste de múltipla
 escolha. Uma tentativa de resolver isso variando o tom das opções foi
 revertida por não atacar o problema real.
 
-A ideia que ficou foi outra: **ponto sem volta**. Dos 8 nós de última
-escolha (o nó cujas duas opções levam direto a um final), alguns têm as
-DUAS opções finais como derrota — a escolha anterior (a terceira) já selou
-o destino, a pessoa só descobre ao chegar lá. A cena não anuncia isso (sem
-"não há mais saída"), então a tensão continua normal. Isso quebra o binário
+A ideia que ficou foi outra: **ponto sem volta**. Isso quebra o binário
 "essa opção certa, essa errada" de um jeito diferente: em vez de toda
 escolha pesar igual até o final, algumas escolhas arriscadas já resolvem o
 jogo mais cedo, e a pessoa só descobre depois.
 
-A instrução sozinha não segura a quantidade de forma perfeita — testado em
-produção com a faixa 1-2, saiu de 1 a 5 pontos sem volta por história. Chegou
-a existir uma validação no código (`contarPontosSemVolta` em
-`geradores/historias.ts`) que descartava a história fora da faixa, mas o
-usuário pediu pra reforçar a instrução em vez disso e parar de descartar por
-essa causa — a contagem continua sendo calculada e aparece no log
-(`console.log` em `gerarHistoria`) só pra acompanhamento manual, nunca
-bloqueia a inserção. Faixa pedida: **3 a 5** (subiu de 1-2 a pedido do
-usuário, pra testar mais nós já decididos antes do final — quase metade da
-última escolha vira derrota certa em vez de aberta), mas uma história fora
-dessa faixa ainda é publicada normalmente.
+A primeira versão fazia isso mantendo a árvore uniforme: um nó de última
+escolha (o nó cujas duas opções levam direto a um final) tinha as DUAS
+opções levando a "derrota" — mas isso obrigava a pessoa a jogar uma quarta
+cena inteira, com uma escolha falsa entre duas derrotas, antes de descobrir
+que já tinha perdido. O usuário apontou o problema: "não quero perder na
+última rodada, o nó da terceira já deve me dizer que perdi" — e que talvez
+nem precisasse a IA pensar nas outras duas opções daquela quarta cena.
+
+A versão atual muda a estrutura de verdade: a árvore deixou de ter
+profundidade uniforme. Cada opção da terceira escolha pode levar a UMA de
+duas coisas — uma quarta cena normal (2 opções, 2 finais), ou **direto a um
+final de derrota**, pulando a quarta cena inteiramente. Isso é um schema com
+`anyOf` (`PROXIMO_NIVEL_3` em `geradores/historias.ts`) — testado isolado
+antes de entrar em produção, porque schema fora do comum já mordeu antes
+(ver limite de aninhamento acima). Funcionou de primeira: a API aceita, e o
+modelo de fato usa a forma mais curta pros ramos sem volta, sem gastar
+tokens gerando uma quarta cena que ninguém vai ver.
+
+Consequência: o total de finais deixou de ser fixo em 16 — cada ponto sem
+volta reduz o total em 1 (uma quarta cena com 2 finais vira 1 final direto),
+então uma história com 3 a 5 pontos sem volta tem entre 11 e 13 finais. O
+site lida com isso automaticamente: `calcularProfundidade` (`lib/db/historias.ts`)
+mede o MAIOR caminho da árvore, não um caminho fixo, porque agora nem todo
+caminho tem o mesmo tamanho; e a tela de final (`[slug].astro`) já mostrava
+"Final" no lugar de um número de cena, então um caminho mais curto só chega
+lá uma cena mais cedo, sem precisar de nenhuma mudança de UI.
+
+A instrução pede 3 a 5 pontos sem volta (subiu de 1-2 a pedido do usuário) e
+não é mais validada no código: uma versão anterior tinha uma checagem
+(`contarPontosSemVolta` em `geradores/historias.ts`) que descartava a
+história fora da faixa, mas o usuário pediu pra reforçar a instrução em vez
+disso e parar de descartar por essa causa — a contagem continua calculada e
+vai pro log (`console.log` em `gerarHistoria`) só pra acompanhamento manual,
+nunca bloqueia a inserção.
 
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do

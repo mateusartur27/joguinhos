@@ -2,24 +2,27 @@ import type { Gemini } from '../gemini';
 import type { ResultadoGeracao } from './dilemas';
 
 /**
- * Quantos niveis de escolha existem antes de um final.
+ * Quantos niveis de escolha existem antes de um final, no caminho MAIS
+ * LONGO da arvore (nem todo caminho tem esse tamanho — ver PONTO SEM VOLTA
+ * no schema abaixo).
  *
- * A arvore tem 5 CAMADAS DE NO (raiz, nivel 2, nivel 3, nivel 4, final), mas
- * so 4 delas tem escolha — o final e so texto + resultado. E essa contagem
- * de "escolhas restantes", nao de "camadas restantes", que `validaArvore`
- * precisa, senao ela desce um nivel a mais do que o schema realmente tem e
- * rejeita toda arvore correta (bug real, pego revisando o primeiro lote:
- * ver README).
+ * A arvore tem ATE 5 CAMADAS DE NO (raiz, nivel 2, nivel 3, nivel 4, final),
+ * mas so 4 delas tem escolha — o final e so texto + resultado. E essa
+ * contagem de "escolhas restantes", nao de "camadas restantes", que
+ * `validaArvore` precisa, senao ela desce um nivel a mais do que o schema
+ * realmente tem e rejeita toda arvore correta (bug real, pego revisando o
+ * primeiro lote: ver README).
  *
  * Subiu de 3 para 4 a pedido do usuario ("10 rodadas", depois "5 rodadas").
- * Tentei subir para 5 escolhas reais (32 finais) e a API do Gemini rejeitou
- * a chamada inteira com HTTP 400 antes de gerar qualquer coisa — o schema
- * de saida estruturada tem um limite rigido de profundidade de aninhamento,
- * e 5 niveis de `noComOpcoes` estoura esse limite (4 niveis funciona, testado
- * em producao: 7/7 historias geradas). Voltou pra 4 ate existir uma forma de
- * representar a arvore sem aninhar cada nivel inteiro no schema (ex.: schema
- * recursivo via `$ref`, que o projeto evita hoje por simplicidade — ver
- * README).
+ * Tentei subir para 5 escolhas reais e a API do Gemini rejeitou a chamada
+ * inteira com HTTP 400 — o schema de saida estruturada tem um limite rigido
+ * de profundidade de aninhamento, e 5 niveis de `noComOpcoes` estoura esse
+ * limite (4 niveis funciona). Ficou em 4 — mas o usuario pediu pra nao
+ * forcar TODO caminho a ter 4 escolhas: a terceira escolha pode pular a
+ * quarta e ir direto pro final ("ponto sem volta", ver NO_NIVEL_3 e a
+ * instrucao) quando o destino ja estiver selado, entao a arvore final e
+ * quase sempre mais rasa que 4 em alguns ramos e o total de finais varia
+ * (11 a 13, nao mais 16 fixo).
  */
 const PROFUNDIDADE_DE_ESCOLHAS = 4;
 
@@ -60,12 +63,14 @@ function instrucao(categoria: Categoria): string {
 microjogos, na categoria "${categoria}": a pessoa lê uma cena e escolhe entre
 duas opções, até chegar a um final classificado como vitória ou derrota.
 
-Estrutura obrigatória (sempre 4 escolhas antes do final, sempre binário):
+Estrutura obrigatória (até 4 escolhas antes do final, sempre binário):
 - Cena raiz: situação inicial, com exatamente 2 opções.
 - Cada opção leva a uma segunda cena, também com exatamente 2 opções.
 - Cada uma dessas leva a uma terceira cena, também com exatamente 2 opções.
-- Cada uma dessas leva a uma quarta cena, também com exatamente 2 opções.
-- Cada uma dessas leva a um final (16 finais no total).
+- Cada opção dessa terceira cena leva a UMA de duas coisas — veja PONTO SEM
+  VOLTA abaixo para quando usar cada uma:
+  (a) uma quarta cena normal, também com 2 opções, terminando em 2 finais; ou
+  (b) direto a um final de "derrota", pulando a quarta cena inteiramente.
 
 Regras:
 - Português do Brasil, coloquial, no tempo presente ou passado recente.
@@ -79,23 +84,25 @@ Regras:
 - Cada final tem um "resultado": "vitoria" quando a pessoa sobrevive, consegue
   o que queria ou resolve a situação a seu favor; "derrota" quando ela falha,
   a situação piora ou ela fica presa/perdida. Use os dois de forma equilibrada
-  — dos 16 finais, nem todos podem ser vitória nem todos derrota, e evite
-  concentrar quase todos num só resultado.
+  entre os finais que vêm de uma quarta cena normal.
 - PONTO SEM VOLTA (regra central da história, não um detalhe — siga com
-  atenção): existem 8 nós de "última escolha" (o nó cujas duas opções levam
-  direto a um final). O NÚMERO EXATO desses 8 nós em que as DUAS opções
-  finais resultam em "derrota" tem que estar entre 3 e 5 — nunca menos de
-  3, nunca mais de 5. Antes de finalizar sua resposta, CONTE quantos desses
-  8 nós você deixou assim; se o total estiver fora de 3-5, ajuste a árvore
-  até bater. Cada um desses nós significa que o destino já foi selado na
-  escolha ANTERIOR (a terceira), mesmo a pessoa não sabendo ainda: ao entrar
-  nesse nó ela já perdeu, só muda a FORMA como perde. Não anuncie isso na
-  cena (nada de "não há mais saída" ou parecido) — a cena mantém tensão
-  normal e as duas opções parecem escolhas de verdade. Cada ponto sem volta
-  precisa ser consequência lógica de uma decisão arriscada já tomada no
-  caminho até ali, não parecer arbitrário.
-- Os 16 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
-  final com uma frase trocada).
+  atenção): a terceira cena tem 4 nós, cada um com 2 opções — 8 opções no
+  total. Em 3 a 5 dessas 8 opções — nunca menos de 3, nunca mais de 5, CONTE
+  antes de finalizar sua resposta — a opção deve levar DIRETO a um final de
+  "derrota" (opção (b) acima), sem gerar uma quarta cena pra esse ramo: não
+  há mais nada a pensar ali, a escolha da terceira cena já selou o destino,
+  então nem invente uma quarta cena que não importa. Nas outras opções, use
+  (a) normalmente. Não anuncie o ponto sem volta na cena (nada de "não há
+  mais saída" ou parecido) — a cena mantém tensão normal e a opção parece
+  uma escolha de verdade; só ao ver que perdeu é que dá pra perceber, olhando
+  pra trás, que aquela escolha da terceira cena já tinha decidido tudo. Cada
+  ponto sem volta precisa ser consequência lógica de uma decisão arriscada
+  já tomada no caminho até ali, não parecer arbitrário nem repetir sempre o
+  mesmo padrão de história pra história.
+- O total de finais varia entre 11 e 13 dependendo de quantos pontos sem
+  volta você usar (cada um reduz o total em 1, porque pula uma quarta cena
+  que teria 2 finais e vira só 1). Os finais devem ser genuinamente
+  diferentes entre si (não apenas o mesmo final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,
   religião ou ofensa a pessoas reais.
 - Não repita nem parafraseie histórias que já existem.`;
@@ -134,7 +141,32 @@ function noComOpcoes(proximo: Record<string, unknown>) {
 }
 
 const NO_NIVEL_4 = noComOpcoes(NO_FINAL);
-const NO_NIVEL_3 = noComOpcoes(NO_NIVEL_4);
+
+// Nivel 3 (a "terceira escolha") e o unico onde uma opcao pode pular a
+// quarta cena e ir direto pra um final — o "ponto sem volta" pedido pelo
+// usuario ("o no da terceira ja deve me dizer que perdi", "nem precisa a
+// IA pensar nas outras duas opcoes"). `anyOf` testado isolado antes de
+// entrar aqui: a API aceita, e o modelo de fato usa a forma mais curta
+// (NO_FINAL) sem gerar o NO_NIVEL_4 desperdicado pra esses ramos.
+const PROXIMO_NIVEL_3 = { anyOf: [NO_NIVEL_4, NO_FINAL] };
+const NO_NIVEL_3 = {
+  type: 'object',
+  properties: {
+    texto: { type: 'string' },
+    opcaoA: {
+      type: 'object',
+      properties: { rotulo: { type: 'string' }, proximo: PROXIMO_NIVEL_3 },
+      required: ['rotulo', 'proximo'],
+    },
+    opcaoB: {
+      type: 'object',
+      properties: { rotulo: { type: 'string' }, proximo: PROXIMO_NIVEL_3 },
+      required: ['rotulo', 'proximo'],
+    },
+  },
+  required: ['texto', 'opcaoA', 'opcaoB'],
+};
+
 const NO_NIVEL_2 = noComOpcoes(NO_NIVEL_3);
 
 const SCHEMA = {
@@ -193,7 +225,9 @@ export async function gerarHistoria(
   // uma fase em que isso descartava a historia fora da faixa — o usuario
   // pediu pra reforcar a instrucao mas parar de descartar por causa dela:
   // so registra no log pra acompanhamento manual, nunca rejeita a insercao.
-  console.log(`Historia "${categoria}": ${contarPontosSemVolta(resposta)} pontos sem volta (pedido: 3-5)`);
+  console.log(
+    `Historia "${categoria}": ${contarPontosSemVolta(resposta, PROFUNDIDADE_DE_ESCOLHAS)} pontos sem volta (pedido: 3-5)`,
+  );
 
   const duplicado = await db
     .prepare('SELECT 1 FROM stories WHERE lower(title) = lower(?)')
@@ -285,37 +319,52 @@ async function slugDisponivel(db: D1Database, titulo: string): Promise<string> {
 }
 
 /**
- * Conta os "pontos sem volta": nos de ultima escolha (cujas duas opcoes
- * levam direto a um final) em que os dois finais sao "derrota". Percorre a
- * arvore inteira somando ocorrencias em qualquer profundidade — so um no
- * final (`!('opcaoA' in no)`) nao conta nada e para a recursao.
+ * Conta os "pontos sem volta": opcoes da TERCEIRA escolha que levam direto
+ * a um final em vez de a uma quarta cena. `profundidadeRestante` segue a
+ * mesma contagem de `validaArvore` (chamada inicial com
+ * PROFUNDIDADE_DE_ESCOLHAS) — so na profundidade 2 (a propria terceira
+ * escolha) e que "proximo ser um final" conta como ponto sem volta; em
+ * qualquer outra profundidade isso nao pode acontecer (o schema so permite
+ * `anyOf` nesse nivel), entao o check e inofensivo se nunca disparar ali.
  */
-function contarPontosSemVolta(no: NoFinalGerado | NoComOpcoesGerado): number {
+function contarPontosSemVolta(no: NoFinalGerado | NoComOpcoesGerado, profundidadeRestante: number): number {
   if (!('opcaoA' in no)) return 0;
 
-  const ehFinalDerrota = (filho: NoFinalGerado | NoComOpcoesGerado): boolean =>
-    !('opcaoA' in filho) && filho.resultado === 'derrota';
+  const contarOpcao = (proximo: NoFinalGerado | NoComOpcoesGerado): number => {
+    const pontoSemVolta = profundidadeRestante === 2 && !('opcaoA' in proximo) ? 1 : 0;
+    return pontoSemVolta + contarPontosSemVolta(proximo, profundidadeRestante - 1);
+  };
 
-  const esteNo = ehFinalDerrota(no.opcaoA.proximo) && ehFinalDerrota(no.opcaoB.proximo) ? 1 : 0;
-
-  return esteNo + contarPontosSemVolta(no.opcaoA.proximo) + contarPontosSemVolta(no.opcaoB.proximo);
+  return contarOpcao(no.opcaoA.proximo) + contarOpcao(no.opcaoB.proximo);
 }
 
-/** Confere que a arvore tem exatamente a profundidade esperada e nada vazio. */
+/**
+ * Confere que a arvore tem a profundidade esperada e nada vazio.
+ *
+ * Um final pode aparecer com profundidadeRestante 0 (o caso normal, final
+ * depois da quarta escolha) OU 1 (ponto sem volta: a terceira escolha pulou
+ * a quarta cena) — mas nunca em profundidade maior que isso, ou a arvore
+ * estaria terminando cedo demais (ex.: raiz ou segunda escolha indo direto
+ * pra um final, que o schema nao pede e a instrucao nao permite).
+ */
 function validaArvore(no: unknown, profundidadeRestante: number): no is HistoriaGerada {
   if (!no || typeof no !== 'object') return false;
   const objeto = no as Record<string, unknown>;
 
   if (typeof objeto.texto !== 'string' || objeto.texto.trim().length < 4) return false;
 
-  if (profundidadeRestante === 0) {
-    // Final: precisa do resultado, e nao pode ter opcoes.
+  const ehNoFinal = 'resultado' in objeto;
+
+  if (ehNoFinal) {
+    if (profundidadeRestante > 1) return false; // final antecipado demais
     return (
       (objeto.resultado === 'vitoria' || objeto.resultado === 'derrota') &&
       !objeto.opcaoA &&
       !objeto.opcaoB
     );
   }
+
+  if (profundidadeRestante === 0) return false; // esperava final, veio no de escolha
 
   for (const chave of ['opcaoA', 'opcaoB'] as const) {
     const opcao = objeto[chave];

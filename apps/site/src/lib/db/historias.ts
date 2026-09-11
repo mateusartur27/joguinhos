@@ -33,7 +33,7 @@ export interface Historia {
   cor: string;
   coresCartoes: string[];
   raizId: number;
-  /** Quantas cenas de escolha ate o final (nao conta o final) — varia por historia. */
+  /** Maior numero de cenas de escolha ate um final, entre todos os caminhos da arvore. */
   profundidadeTotal: number;
   nos: NoHistoria[];
 }
@@ -112,25 +112,32 @@ export async function buscarHistoria(db: D1Database, slug: string): Promise<Hist
 }
 
 /**
- * Conta cenas de escolha da raiz ate o final, seguindo so um caminho (A, ou
- * B se A nao existir) — a arvore e sempre uniforme em profundidade, entao um
- * caminho so basta. O final NAO entra na contagem: ele nao e uma escolha, e
- * a UI mostra "Final" no lugar de um numero de cena ([slug].astro) — contar
- * o final aqui fazia o site anunciar "Cena 4 de 5" e depois pular direto pra
- * "Final" sem nunca mostrar uma "Cena 5", o que pareceu um erro de contagem.
+ * Maior numero de cenas de escolha entre a raiz e um final, em QUALQUER
+ * caminho da arvore. O final NAO entra na contagem: ele nao e uma escolha, e
+ * a UI mostra "Final" no lugar de um numero de cena ([slug].astro).
+ *
+ * Precisa ser o MAIOR caminho, nao um caminho qualquer: desde o "ponto sem
+ * volta" (geradores/historias.ts no content-engine), a arvore deixou de ter
+ * profundidade uniforme — alguns ramos terminam na terceira escolha, pulando
+ * a quarta. Seguir so o caminho de opcaoA (como antes) podia calhar de medir
+ * um ramo curto e legendar "Cena 1 de 3" pra gente que esta, na verdade, numa
+ * historia de 4 cenas — o denominador errado pra quem nao pegou aquele ramo.
  */
 function calcularProfundidade(nos: NoHistoria[], raizId: number): number {
   const porId = new Map(nos.map((no) => [no.id, no]));
-  let atual = porId.get(raizId);
-  let cenas = 0;
 
-  while (atual && !atual.ehFinal) {
-    cenas += 1;
-    const proximoId = atual.opcaoA?.proximoId ?? atual.opcaoB?.proximoId;
-    atual = proximoId === undefined ? undefined : porId.get(proximoId);
+  function maiorCaminho(id: number): number {
+    const no = porId.get(id);
+    if (!no || no.ehFinal) return 0;
+
+    const proximos = [no.opcaoA?.proximoId, no.opcaoB?.proximoId].filter(
+      (proximoId): proximoId is number => proximoId !== undefined,
+    );
+    const maiorFilho = proximos.length > 0 ? Math.max(...proximos.map(maiorCaminho)) : 0;
+    return 1 + maiorFilho;
   }
 
-  return cenas;
+  return maiorCaminho(raizId);
 }
 
 export interface CategoriaHistoria {

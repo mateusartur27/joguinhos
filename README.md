@@ -147,14 +147,17 @@ o destino, a pessoa só descobre ao chegar lá. A cena não anuncia isso (sem
 escolha pesar igual até o final, algumas escolhas arriscadas já resolvem o
 jogo mais cedo, e a pessoa só descobre depois.
 
-A instrução sozinha não segura a quantidade de forma confiável — testado em
-produção com a faixa 1-2, saiu de 1 a 5 pontos sem volta por história. Por
-isso a contagem é validada no código (`contarPontosSemVolta` em
-`geradores/historias.ts`), não só confiada ao prompt: fora da faixa, a
-história é descartada como qualquer outra falha de validação. Faixa atual:
-**3 a 5** (subiu de 1-2 a pedido do usuário, pra testar mais nós já
-decididos antes do final — quase metade da última escolha vira derrota
-certa em vez de aberta).
+A instrução sozinha não segura a quantidade de forma perfeita — testado em
+produção com a faixa 1-2, saiu de 1 a 5 pontos sem volta por história. Chegou
+a existir uma validação no código (`contarPontosSemVolta` em
+`geradores/historias.ts`) que descartava a história fora da faixa, mas o
+usuário pediu pra reforçar a instrução em vez disso e parar de descartar por
+essa causa — a contagem continua sendo calculada e aparece no log
+(`console.log` em `gerarHistoria`) só pra acompanhamento manual, nunca
+bloqueia a inserção. Faixa pedida: **3 a 5** (subiu de 1-2 a pedido do
+usuário, pra testar mais nós já decididos antes do final — quase metade da
+última escolha vira derrota certa em vez de aberta), mas uma história fora
+dessa faixa ainda é publicada normalmente.
 
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do

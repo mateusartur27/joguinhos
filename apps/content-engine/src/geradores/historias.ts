@@ -81,14 +81,17 @@ Regras:
   a situação piora ou ela fica presa/perdida. Use os dois de forma equilibrada
   — dos 16 finais, nem todos podem ser vitória nem todos derrota, e evite
   concentrar quase todos num só resultado.
-- PONTO SEM VOLTA: existem 8 nós de "última escolha" (o nó cujas duas opções
-  levam direto a um final). Em 3 a 5 desses 8 nós — nunca menos de 3, nunca
-  mais de 5, conte antes de responder — as DUAS opções finais desse nó
-  resultam em "derrota". Isso significa que o destino já foi selado na
+- PONTO SEM VOLTA (regra central da história, não um detalhe — siga com
+  atenção): existem 8 nós de "última escolha" (o nó cujas duas opções levam
+  direto a um final). O NÚMERO EXATO desses 8 nós em que as DUAS opções
+  finais resultam em "derrota" tem que estar entre 3 e 5 — nunca menos de
+  3, nunca mais de 5. Antes de finalizar sua resposta, CONTE quantos desses
+  8 nós você deixou assim; se o total estiver fora de 3-5, ajuste a árvore
+  até bater. Cada um desses nós significa que o destino já foi selado na
   escolha ANTERIOR (a terceira), mesmo a pessoa não sabendo ainda: ao entrar
   nesse nó ela já perdeu, só muda a FORMA como perde. Não anuncie isso na
   cena (nada de "não há mais saída" ou parecido) — a cena mantém tensão
-  normal e as duas opções parecem escolhas de verdade. O ponto sem volta
+  normal e as duas opções parecem escolhas de verdade. Cada ponto sem volta
   precisa ser consequência lógica de uma decisão arriscada já tomada no
   caminho até ali, não parecer arbitrário.
 - Os 16 finais devem ser genuinamente diferentes entre si (não apenas o mesmo
@@ -186,16 +189,11 @@ export async function gerarHistoria(
     return { gerados: 1, inseridos: 0, descartados: 1 };
   }
 
-  // A instrucao pede 3 a 5 "pontos sem volta", mas sozinha nao segura esse
-  // numero de forma confiavel (a faixa 1-2 testada antes ja saiu de 1 a 5
-  // por historia). Conta de verdade e descarta fora da faixa, em vez de
-  // confiar so no prompt. Faixa subiu de 1-2 pra 3-5 a pedido do usuario,
-  // pra testar mais nos ja decididos antes do final (metade a mais da
-  // arvore da ultima escolha vira derrota certa em vez de aberta).
-  const pontosSemVolta = contarPontosSemVolta(resposta);
-  if (pontosSemVolta < 3 || pontosSemVolta > 5) {
-    return { gerados: 1, inseridos: 0, descartados: 1 };
-  }
+  // A instrucao pede 3 a 5 "pontos sem volta" (ver acima) e ja passou por
+  // uma fase em que isso descartava a historia fora da faixa — o usuario
+  // pediu pra reforcar a instrucao mas parar de descartar por causa dela:
+  // so registra no log pra acompanhamento manual, nunca rejeita a insercao.
+  console.log(`Historia "${categoria}": ${contarPontosSemVolta(resposta)} pontos sem volta (pedido: 3-5)`);
 
   const duplicado = await db
     .prepare('SELECT 1 FROM stories WHERE lower(title) = lower(?)')

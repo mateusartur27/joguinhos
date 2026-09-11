@@ -189,20 +189,31 @@ disso e parar de descartar por essa causa — a contagem continua calculada e
 vai pro log (`console.log` em `gerarHistoria`) só pra acompanhamento manual,
 nunca bloqueia a inserção.
 
-**Aprendizado implícito**: a instrução também pede que a história carregue,
-de forma implícita, algum aprendizado real sobre a vida (coragem, confiança,
-ganância, medo...) — nunca como moral explícita no texto, nunca como o
-ponto principal. Pedido do usuário: "acrescentasse algo na vida da pessoa,
-como um aprendizado, não como a trama principal, pra não estragar os
-jogos" — e depois, quando perguntado onde isso deveria aparecer na tela,
-"não é pra ser uma frase a mais, é pra ser implícito durante os jogos". Sem
-como validar isso por código (não é uma contagem, é qualidade de escrita);
-fica só na instrução, revisado manualmente como qualquer lote novo. Mesma
-ideia aplicada em Escolhas (`geradores/dilemas.ts`) — os outros geradores
-(Quiz, Adivinhe, Jogo Diário) ficaram de fora por enquanto: já são formatos
-de fato explícito (a pergunta/pista já É o aprendizado), e forçar essa
-instrução ali arriscava diluir a precisão factual que este projeto já
-ajustou com cuidado (thinking_level, validação de índice em Adivinhe).
+**Aprendizado implícito**: a instrução pede que a história carregue um
+aprendizado REAL e concreto sobre o mundo — um fato, conceito ou técnica
+verdadeira coerente com a categoria (ex.: em Ficção científica, um conceito
+científico real já no primeiro enunciado; em Sobrevivência, uma técnica
+real de sobrevivência; em Crime, um método real de investigação) — nunca
+como explicação separada nem como o ponto principal da história. Pedido
+original do usuário: "acrescentasse algo na vida da pessoa, como um
+aprendizado, não como a trama principal, pra não estragar os jogos" — e
+depois, quando perguntado onde deveria aparecer, "não é pra ser uma frase
+a mais, é pra ser implícito durante os jogos". A primeira versão
+implementou isso como reflexão filosófica abstrata sobre valores da vida
+(coragem, confiança, ganância...) — o usuário corrigiu: "talvez não fossem
+aprendizados filosóficos, mas sim aprendizados mesmo", dando o exemplo do
+conceito científico. Corrigido só aqui; em Escolhas (`geradores/dilemas.ts`)
+a reflexão abstrata original já funcionava bem (o formato de escolha
+impossível combina mais com valor abstrato do que com fato concreto — o
+usuário confirmou manter como está lá).
+
+Risco novo que essa mudança introduz: pedir fatos reais dentro de ficção
+tem o mesmo risco de invenção que Quiz/Adivinhe/Jogo Diário já enfrentam —
+por isso a instrução também pede "só use um fato do qual você tenha
+certeza absoluta". Sem validação de código pra isso (não é uma contagem,
+como o ponto sem volta); fica só na instrução, revisado manualmente. Os
+outros geradores (Quiz, Adivinhe, Jogo Diário) continuam de fora: já são
+formatos de fato explícito (a pergunta/pista já É o aprendizado).
 
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do

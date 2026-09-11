@@ -105,12 +105,19 @@ Regras:
   diferentes entre si (não apenas o mesmo final com uma frase trocada).
 - Nada de conteúdo sexual, drogas, automutilação, política partidária,
   religião ou ofensa a pessoas reais.
-- Deixe a história carregar, de forma implícita, algum aprendizado real
-  sobre a vida — coragem, confiança, ganância, medo, orgulho, o que fizer
-  sentido pro tom de "${categoria}" — nunca como moral explícita no texto
-  nem como o ponto principal da história. É pano de fundo, não recado: a
-  trama e o susto/riso/suspense continuam sendo o que a pessoa está ali pra
-  jogar; o aprendizado é algo que só se nota, se notar, depois de terminar.
+- Deixe a história carregar um aprendizado REAL e concreto sobre o mundo —
+  não uma reflexão filosófica abstrata sobre valores da vida, e sim um
+  fato, conceito ou técnica verdadeira, coerente com "${categoria}" (ex.:
+  em Ficção científica, um conceito científico real pode aparecer já no
+  primeiro enunciado; em Sobrevivência, uma técnica real de sobrevivência;
+  em Crime, um método real de investigação; em Mistério/Terror, um fato
+  real sobre o tipo de lugar, objeto ou fenômeno envolvido). O aprendizado
+  entra dissolvido na cena, como parte natural do que está sendo narrado —
+  nunca como explicação separada, aula ou nota de rodapé, e nunca virando
+  o ponto principal da história (a trama e o susto/riso/suspense continuam
+  sendo o que a pessoa está ali pra jogar). Só use um fato do qual você
+  tenha certeza absoluta — errar um fato apresentado como verdadeiro é
+  pior que não incluir nenhum.
 - Não repita nem parafraseie histórias que já existem.`;
 }
 

@@ -38,6 +38,18 @@ export interface PedidoEstruturado {
    * verificavel (quiz), nunca em conteudo de opiniao (dilema).
    */
   fundamentado?: boolean;
+  /**
+   * "minimal" | "low" | "medium" | "high" — quanto o modelo "pensa" antes de
+   * responder (tokens de raciocinio, cobrados como saida). Sem isso o
+   * flash-lite roda no minimo ("minimal"). Testado isoladamente pra Historia
+   * Interativa (unico gerador com uma restricao de CONTAGEM exata — 3 a 5
+   * "pontos sem volta" — nao so texto solto): amostra pequena (4 tentativas
+   * por lado) mas direcional, "high" acertou 4/4 vs 3/4 no padrao, custando
+   * quase o dobro de latencia (~35s vs ~20s por chamada). Nao ligado nos
+   * outros geradores (dilemas/quiz/palpites/desafios) por falta de evidencia
+   * de que precisam — nenhum deles tem uma exigencia de contagem assim.
+   */
+  thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
 }
 
 /**
@@ -91,6 +103,9 @@ export class Gemini {
           schema: pedido.schema,
         },
         ...(pedido.fundamentado ? { tools: [{ type: 'google_search' }] } : {}),
+        ...(pedido.thinkingLevel
+          ? { generation_config: { thinking_level: pedido.thinkingLevel } }
+          : {}),
       }),
     });
 

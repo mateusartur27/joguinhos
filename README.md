@@ -108,13 +108,37 @@ história é descartada como qualquer outra falha de validação. Faixa atual:
 decididos antes do final — quase metade da última escolha vira derrota
 certa em vez de aberta).
 
+Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
+`geradores/historias.ts`) — todos os outros rodam no padrão do
+`gemini-3.5-flash-lite` (nível "minimal", o mais baixo). Teste isolado fora
+do pipeline (4 chamadas de cada lado, mesmo schema/instrução, sem tocar no
+D1): "high" passou a validação de estrutura + faixa de pontos sem volta em
+4/4 tentativas contra 3/4 no padrão, custando quase o dobro de latência
+(~35s vs ~20s por chamada). Amostra pequena, mas a direção faz sentido:
+história é o único gerador com uma exigência de **contagem exata** (3 a 5
+de 8), não só texto solto — os outros (dilemas, quiz, palpites, desafios)
+não têm essa restrição e não foram testados, então não têm motivo pra pagar
+o custo extra de latência sem evidência de que precisam.
+
 É um jogo só, não um por história: a pessoa escolhe o **tema** em
-`/historia` e joga a história daquele tema **de hoje** — mesma seleção
-deterministica do Jogo Diário (`historiaDoDia` em `lib/db/historias.ts`,
-índice pelo dia % histórias daquela categoria), só que filtrada por
-categoria em vez de global. Antes disso cada história era uma página fixa e
-permanente com seu próprio cartão na home; ficou parecido demais com Jogo
-Diário sem ser um jogo novo de verdade, então virou o mesmo padrão.
+`/historia` e joga a história daquele tema **de hoje**. A seleção mudou de
+"rotação por índice do dia" pra "a que foi gerada hoje, senão a mais
+recente disponível" (`historiaDoDia` em `lib/db/historias.ts`, coluna
+`stories.for_date` desde a migração `0011`) — a rotação antiga passava por
+TODAS as histórias já publicadas da categoria em ordem alfabética, então
+gerar uma história nova não garantia jogá-la tão cedo (o índice só cai nela
+quando o cálculo calhar de apontar pra posição alfabética dela, o que podia
+levar semanas). O usuário notou o problema testando Crime: o dia caiu numa
+história de antes do "ponto sem volta" existir, mesmo tendo uma nova
+gerada na hora. Trade-off aceito: se a geração do dia falhar a validação (é
+comum, a faixa de pontos sem volta descarta bastante), a categoria repete a
+história mais recente em vez de rotacionar pra outra antiga — perde
+variedade em dias ruins, ganha "hoje é hoje mesmo" nos bons. Histórias não
+são deletadas (ficam como pool de anti-repetição de título e como
+fallback); antigas ficam com `for_date NULL`, que o SQLite ordena por
+último. Antes disso cada história era uma página fixa e permanente com seu
+próprio cartão na home; ficou parecido demais com Jogo Diário sem ser um
+jogo novo de verdade, então virou o mesmo padrão de seleção diária.
 
 Cor e emoji são por **categoria** (Terror, Mistério, Sobrevivência, Romance,
 Comédia, Crime, Ficção científica) — todas as histórias da mesma categoria

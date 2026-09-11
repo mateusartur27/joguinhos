@@ -23,6 +23,11 @@ import type { ResultadoGeracao } from './dilemas';
  */
 const PROFUNDIDADE_DE_ESCOLHAS = 4;
 
+/** Mesmo formato usado em `daily_results.play_date` (lib/db/diario.ts no site). */
+function dataDeHojeUTC(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export const CATEGORIAS = [
   'Mistério',
   'Terror',
@@ -169,6 +174,12 @@ export async function gerarHistoria(
     instrucaoDeSistema: instrucao(categoria),
     entrada: `Gere uma história nova de "${categoria}".\n\nHistórias dessa categoria que já existem (não repita nem reformule):\n${jaExistem}`,
     schema: SCHEMA,
+    // Unico gerador com uma exigencia de CONTAGEM exata (3 a 5 pontos sem
+    // volta) — teste isolado mostrou "high" ajudando nisso especificamente
+    // (ver comentario em gemini.ts). Custa quase o dobro de latencia, mas
+    // aceitavel: geracao e assincrona (cron/disparo manual), nunca bloqueia
+    // usuario.
+    thinkingLevel: 'high',
   });
 
   if (!validaArvore(resposta, PROFUNDIDADE_DE_ESCOLHAS)) {
@@ -197,10 +208,18 @@ export async function gerarHistoria(
 
   await db
     .prepare(
-      `INSERT INTO stories (slug, title, category, color, card_colors, status, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM stories))`,
+      `INSERT INTO stories (slug, title, category, color, card_colors, status, sort_order, for_date)
+       VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM stories), ?)`,
     )
-    .bind(slug, resposta.titulo.trim(), categoria, identidade.fundo, JSON.stringify(identidade.cartoes), statusInicial)
+    .bind(
+      slug,
+      resposta.titulo.trim(),
+      categoria,
+      identidade.fundo,
+      JSON.stringify(identidade.cartoes),
+      statusInicial,
+      dataDeHojeUTC(),
+    )
     .run();
 
   await inserirNo(db, slug, resposta, true);

@@ -166,20 +166,36 @@ export async function categoriasComHistoria(db: D1Database): Promise<CategoriaHi
 }
 
 /**
- * Historia de hoje dentro de uma categoria — mesmo indice deterministico de
- * `desafioDeHoje` (`lib/db/diario.ts`), agora filtrado por categoria: todo
- * mundo que escolhe o mesmo tema no mesmo dia joga a mesma historia.
+ * Historia de hoje dentro de uma categoria: a que foi gerada hoje, se
+ * existir; senao, a mais recente disponivel daquela categoria.
+ *
+ * Antes disso a selecao era uma rotacao por indice do dia sobre TODAS as
+ * historias ja publicadas (`dia % total`, mesmo truque de `desafioDeHoje`
+ * em `lib/db/diario.ts`) — mas isso significava que gerar uma historia nova
+ * nao garantia joga-la tao cedo: o indice so cai nela quando o calculo
+ * calhar de apontar pra posicao alfabetica dela, o que pode levar dias ou
+ * semanas dependendo do tamanho do acervo da categoria. O usuario apontou
+ * que isso nao fazia sentido (gerar hoje, jogar uma historia antiga).
+ *
+ * `ORDER BY for_date DESC, rowid DESC` sozinho ja resolve os dois casos: se
+ * existe uma historia com `for_date` de hoje, ela e a mais recente possivel
+ * e vem primeiro; senao, a consulta cai naturalmente na mais recente
+ * disponivel (incluindo as historias antigas, com `for_date` NULL, que o
+ * SQLite ordena por ultimo em DESC).
  */
 export async function historiaDoDia(db: D1Database, categoriaSlug: string): Promise<Historia | null> {
   const { results } = await db
-    .prepare("SELECT slug, category FROM stories WHERE status = 'published' ORDER BY slug ASC")
+    .prepare(
+      `SELECT slug, category FROM stories
+        WHERE status = 'published'
+        ORDER BY for_date DESC, rowid DESC`,
+    )
     .all<{ slug: string; category: string }>();
 
   const daCategoria = results.filter((linha) => slugCategoria(linha.category) === categoriaSlug);
   if (daCategoria.length === 0) return null;
 
-  const indiceDoDia = Math.floor(Date.now() / 86_400_000) % daCategoria.length;
-  return buscarHistoria(db, daCategoria[indiceDoDia]!.slug);
+  return buscarHistoria(db, daCategoria[0]!.slug);
 }
 
 /** Abaixo disso o percentual entre finais ainda e ruido. */

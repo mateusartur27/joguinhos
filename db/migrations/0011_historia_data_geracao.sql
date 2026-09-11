@@ -1,0 +1,13 @@
+-- Ate aqui, "a historia de hoje" era uma rotacao por indice do dia sobre
+-- TODAS as historias ja publicadas da categoria (ordenadas por titulo),
+-- entao gerar uma historia nova nao garantia ela aparecer tao cedo. O
+-- usuario apontou o problema: nao faz sentido gerar hoje e jogar uma
+-- antiga. `for_date` marca em que dia (UTC) a historia foi gerada; a
+-- selecao passa a ser "a de hoje se existir, senao a mais recente
+-- disponivel" (ver historiaDoDia em lib/db/historias.ts) em vez de rotacao.
+--
+-- Historias antigas ficam com for_date NULL de proposito (nunca foram
+-- "geradas para" um dia especifico) — em SQLite, NULL ordena depois de
+-- qualquer data em `ORDER BY for_date DESC`, entao continuam servindo de
+-- fallback sem precisar de um valor inventado.
+ALTER TABLE stories ADD COLUMN for_date TEXT;

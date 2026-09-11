@@ -80,12 +80,48 @@ function textoDaResposta(resposta: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Quantas vezes tentar de novo um erro transitorio (5xx — "alta demanda",
+ * indisponibilidade momentanea) antes de desistir. Descoberto num dia real
+ * de testes: o `/gerar` completo faz ~13 chamadas em sequencia
+ * (dilemas+quiz+palpites+desafios+7 historias) e, sem retry, um unico 5xx
+ * em QUALQUER uma delas derrubava a geracao do dia inteira — nao so a
+ * chamada que falhou. Um erro isolado tinha ~80% de chance de acontecer em
+ * algum lugar da sequencia mesmo a chamada isolada quase sempre funcionando
+ * de primeira. Nunca retenta 4xx (ex.: o limite de profundidade de schema,
+ * que sempre falha do mesmo jeito — tentar de novo so desperdica tempo).
+ */
+const MAX_TENTATIVAS = 3;
+const ESPERA_BASE_MS = 3000;
+
+function ehErroTransitorio(status: number | undefined): boolean {
+  return status !== undefined && status >= 500;
+}
+
 export class Gemini {
   constructor(private readonly opcoes: GeminiOptions) {
     if (!opcoes.apiKey) throw new GeminiError('GEMINI_API_KEY ausente');
   }
 
   async gerar<T>(pedido: PedidoEstruturado): Promise<T> {
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+      try {
+        return await this.chamarUmaVez<T>(pedido);
+      } catch (erro) {
+        const status = erro instanceof GeminiError ? erro.status : undefined;
+        if (!ehErroTransitorio(status) || tentativa === MAX_TENTATIVAS) throw erro;
+
+        const esperaMs = ESPERA_BASE_MS * tentativa;
+        console.warn(
+          `Gemini falhou (tentativa ${tentativa}/${MAX_TENTATIVAS}, HTTP ${status}) — tentando de novo em ${esperaMs}ms`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, esperaMs));
+      }
+    }
+    throw new GeminiError('Gemini falhou apos todas as tentativas'); // inalcancavel, so pro TS
+  }
+
+  private async chamarUmaVez<T>(pedido: PedidoEstruturado): Promise<T> {
     const resposta = await this.opcoes.fetch(ENDPOINT, {
       method: 'POST',
       headers: {

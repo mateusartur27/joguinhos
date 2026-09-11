@@ -314,6 +314,15 @@ Toda chamada ao Gemini passa pelo `createRateLimitedFetch` com reserva em D1,
 portado do `gerador-de-video`: o escopo da proteção precisa ser a conta
 inteira, e o D1 é o único estado que as execuções já compartilham.
 
+`Gemini.gerar()` (`gemini.ts`) reten­ta até 3 vezes em erro 5xx ("alta
+demanda", indisponibilidade momentânea) com espera crescente (3s, 6s) antes
+de desistir — nunca retenta 4xx (ex.: o limite de profundidade de schema,
+que falha do mesmo jeito sempre). Descoberto num dia real de testes: o
+`/gerar` completo faz ~13 chamadas em sequência (dilemas + quiz + palpites +
+desafios + 7 histórias), e sem retry um único 5xx em qualquer uma delas
+derrubava a geração do dia inteira — mesmo com cada chamada isolada quase
+sempre funcionando de primeira.
+
 Se um lote parecer suspeito (ou perto da aprovação do AdSense, quando o risco
 de política pesa mais), `PUBLICAR_AUTOMATICO=false` volta ao fluxo de rascunho:
 

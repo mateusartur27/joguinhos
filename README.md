@@ -215,6 +215,21 @@ como o ponto sem volta); fica só na instrução, revisado manualmente. Os
 outros geradores (Quiz, Adivinhe, Jogo Diário) continuam de fora: já são
 formatos de fato explícito (a pergunta/pista já É o aprendizado).
 
+Segundo problema real, achado jogando o primeiro lote: o fato virava dica
+de qual opção era "a certa". Exemplos reais rejeitados — Crime: a cena
+explicava que dados de antena (ERB) revelam a localização de um celular, e
+uma das duas opções era literalmente "analisar dados da torre local"
+(óbvia); Ficção científica: a cena descrevia um campo magnético afetando a
+água do corpo, e uma opção era "reiniciar o gerador" sem nenhuma ligação
+explicada com essa ameaça específica (a outra opção, "acionar escudo",
+ficava obviamente certa por eliminação). A instrução ganhou uma regra
+nova: as DUAS opções precisam ser respostas plausíveis e conectadas à
+MESMA cena — nunca uma resposta técnica óbvia contra uma solta sem nexo —
+e o fato precisa funcionar como ambientação, nunca como pista de como
+resolver a cena. Mesmo problema de fundo do "ponto sem volta" original
+(uma opção soando certa e a outra errada), só que causado dessa vez pelo
+próprio fato, não pelo tom do rótulo.
+
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do
 `gemini-3.5-flash-lite` (nível "minimal", o mais baixo). Teste isolado fora

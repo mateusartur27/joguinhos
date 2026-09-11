@@ -77,7 +77,16 @@ Regras:
 - Cada cena tem no máximo 3 frases curtas. É "história rápida", não conto.
 - Mantenha o tom de "${categoria}" a história inteira.
 - Os rótulos das opções são curtos (até 6 palavras), começando com um emoji
-  relacionado à ação (ex.: "🚪 Abro a porta").
+  relacionado à ação (ex.: "🚪 Abro a porta"). As DUAS opções precisam ser
+  respostas plausíveis e conectadas à MESMA cena que acabou de ser descrita
+  — nunca uma opção "óbvia" (a resposta técnica evidente pro que acabou de
+  ser explicado) contra uma solta, sem relação clara com o que foi narrado.
+  Se a cena menciona uma ameaça, um mecanismo ou um recurso específico, as
+  DUAS opções devem responder a ELE de formas diferentes — nunca uma
+  responder à ameaça e a outra introduzir algo que a cena nunca mencionou
+  (ex. real, rejeitado: a cena descreve um campo magnético afetando o
+  corpo, e uma opção é "reiniciar o gerador" sem nenhuma ligação explicada
+  com esse perigo específico).
 - Terror e Crime pedem tensão e sugestão, NUNCA descrição gráfica de
   violência, sangue ou ferimento — o susto vem da atmosfera, não de detalhe
   explícito. Isso vale mesmo puxando o gênero ao limite.
@@ -117,7 +126,13 @@ Regras:
   o ponto principal da história (a trama e o susto/riso/suspense continuam
   sendo o que a pessoa está ali pra jogar). Só use um fato do qual você
   tenha certeza absoluta — errar um fato apresentado como verdadeiro é
-  pior que não incluir nenhum.
+  pior que não incluir nenhum. CUIDADO: um fato bem colocado não pode virar
+  dica de qual opção é a certa — se ele deixa uma opção obviamente "a
+  resposta inteligente" (ex. real, rejeitado: a cena explica que dados de
+  antena revelam a localização de um celular, e uma das opções literalmente
+  é "analisar dados da antena") contra outra sem nexo com a cena, isso
+  quebra a regra das DUAS opções plausíveis (ver acima). O fato entra como
+  contexto/ambientação da cena, nunca como pista de como resolvê-la.
 - Não repita nem parafraseie histórias que já existem.`;
 }
 

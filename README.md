@@ -237,6 +237,15 @@ riscos diferentes) em vez de "a resposta óbvia" contra "a solta". Ambientação
 pura sem ligação nenhuma virou o plano B, só quando não dá pra conectar as
 duas sem forçar.
 
+Terceiro ajuste: testando a categoria Ficção científica, termos como
+"diamagnetismo" e "propulsores iônicos" saíram tecnicamente corretos mas
+difíceis pra quem não é da área — o usuário pediu "coloque no prompt que
+deve ser fácil de entender e aprender". A instrução ganhou uma regra de
+linguagem acessível: quando o fato exigir um termo técnico, explicar o que
+ele significa em palavras simples dentro da própria frase (sem parar a
+ação pra dar aula) — o objetivo é a pessoa aprender de verdade, não sair
+confusa com um termo nunca traduzido.
+
 Esse gerador é o único com `thinkingLevel: 'high'` ligado (`gemini.ts` /
 `geradores/historias.ts`) — todos os outros rodam no padrão do
 `gemini-3.5-flash-lite` (nível "minimal", o mais baixo). Teste isolado fora

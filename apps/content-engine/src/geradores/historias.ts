@@ -136,6 +136,14 @@ Regras:
   válidas, com vantagens e riscos diferentes — em vez de uma "resposta
   óbvia" contra uma solta. Se não der pra fazer isso sem forçar, aí sim
   deixe o fato como pura ambientação, sem ligação com nenhuma opção.
+  LINGUAGEM ACESSÍVEL: o fato precisa ser fácil de entender e de aprender
+  pra alguém leigo no assunto, não só correto. Se o conceito exigir um
+  termo técnico (ex.: "diamagnetismo", "propulsores iônicos"), explique o
+  que ele significa em palavras simples dentro da própria frase, sem parar
+  a ação pra dar aula — a pessoa precisa terminar a cena entendendo o fato,
+  não confusa com um termo que nunca foi traduzido pra linguagem comum.
+  Prefira sempre a explicação simples a impressionar com vocabulário
+  técnico.
 - Não repita nem parafraseie histórias que já existem.`;
 }
 

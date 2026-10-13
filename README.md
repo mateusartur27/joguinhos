@@ -1,18 +1,19 @@
 # joguinhos
 
 Plataforma de microjogos rápidos em português. Cada jogo tem página e link
-próprios: um vídeo do TikTok manda a pessoa direto para a atração que a fez
-clicar, sem cadastro e sem navegação.
+próprios: quem recebe o link cai direto no jogo, sem cadastro e sem
+navegação.
 
-**Produção:** https://joguinhos.mateus2002ns.workers.dev
+**Status:** desativado em 13/10/2026. O site saiu do ar; o código e um export
+completo do banco ficam neste repositório — ver [Como restaurar](#como-restaurar).
 
-## O ciclo que o produto fecha
+## Números coletivos
 
 Pessoas jogam → o banco acumula agregados (porcentagens, rankings, taxa de
-acerto) → os resultados curiosos viram vídeo → o vídeo traz gente nova.
+acerto) → cada jogador vê como se saiu em relação aos outros.
 
-Por isso os números não são enfeite: são o insumo do conteúdo. Duas regras
-saem daí e valem em todo o código:
+Por isso os números não são enfeite. Duas regras saem daí e valem em todo o
+código:
 
 - **Nada de número inventado.** Enquanto a amostra é pequena, a tela diz outra
   coisa ("você é um dos primeiros a responder isso") em vez de mostrar "100%".
@@ -328,7 +329,7 @@ tarefa é "que fique bonito", que exige julgamento visual, não fórmula.
 - **Cloudflare Workers** com static assets (não Pages — a Cloudflare recomenda
   Workers para projetos novos)
 - **D1** para todo o estado agregado
-- Sem framework de UI e sem webfont: quem chega de link do TikTok está em 4G
+- Sem framework de UI e sem webfont: a maioria joga no celular, muitas vezes em 4G
 
 Bindings vêm de `import { env } from 'cloudflare:workers'`.
 `Astro.locals.runtime` **não existe** no Astro 7.
@@ -374,12 +375,11 @@ Isso já mostrou dois tipos de erro reais, e vale saber a diferença:
 
 O gerador tem suporte pronto para busca do Google como reforço de fato
 (`GEMINI_GROUNDING_ENABLED`), mas ligar isso quebra a geração inteira com 429
-até a conta Google ter faturamento habilitado — mesmo obstáculo já visto na
-geração de música. Fica `false` até isso existir.
+até a conta Google ter faturamento habilitado. Fica `false` até isso existir.
 
-Toda chamada ao Gemini passa pelo `createRateLimitedFetch` com reserva em D1,
-portado do `gerador-de-video`: o escopo da proteção precisa ser a conta
-inteira, e o D1 é o único estado que as execuções já compartilham.
+Toda chamada ao Gemini passa pelo `createRateLimitedFetch` com reserva em D1:
+o escopo da proteção precisa ser a conta inteira, e o D1 é o único estado que
+as execuções já compartilham.
 
 `Gemini.gerar()` (`gemini.ts`) reten­ta até 3 vezes em erro 5xx ("alta
 demanda", indisponibilidade momentânea) com espera crescente (3s, 6s) antes
@@ -444,6 +444,33 @@ npm run deploy               # build limpo + wrangler deploy
 pré-renderizado esquecido no `dist/` é servido como asset estático e ganha do
 Worker, então a página antiga continua no ar mesmo depois do deploy. Foi o que
 aconteceu com a home entre as fases 0 e 4.
+
+## Como restaurar
+
+Os dois Workers e o banco D1 de produção foram apagados da Cloudflare. Para
+pôr o site no ar de novo:
+
+1. Criar um D1 novo e colocar o `database_id` dele em
+   `apps/site/wrangler.jsonc` e `apps/content-engine/wrangler.jsonc`:
+   ```bash
+   npx wrangler d1 create joguinhos
+   ```
+2. Popular o banco — escolher **uma** das opções:
+   - **Com tudo o que já foi jogado e gerado** (660 dilemas, 713 perguntas,
+     348 histórias, votos e rankings), a partir do export de 13/10/2026. O
+     arquivo já traz as tabelas e o registro das migrações 0001–0011:
+     ```bash
+     npx wrangler d1 execute joguinhos --remote --file db/export/joguinhos-2026-10-13.sql
+     ```
+   - **Do zero**, só com o acervo inicial das migrações:
+     ```bash
+     npm run db:migrate:remote
+     ```
+3. Definir os segredos do motor de conteúdo (`GEMINI_API_KEY`, `ADMIN_TOKEN`)
+   com `npx wrangler secret put` dentro de `apps/content-engine`.
+4. Publicar os dois Workers (`npm run deploy` e `npm run content:deploy`) e,
+   se quiser deploy automático de novo, recriar os gatilhos do Workers Builds
+   descritos acima.
 
 ## Pendências fora do código
 
